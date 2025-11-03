@@ -1,0 +1,15 @@
+/* CitfixLogo.css */
+.citfix-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.citfix-logo svg {
+  display: block;
+  transition: transform 0.2s ease-in-out;
+}
+
+.citfix-logo:hover svg {
+  transform: scale(1.05);
+}

@@ -1,57 +1,50 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CitfixLogo } from '../CitfixLogo';
-import "../../css/LoginPage.css";
-
+import CitfixLogo from '../components/CitfixLogo';
+import "../css/AuthPage.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Navigate to building selection page on login
     navigate('/buildings');
   };
 
   const handleGoogleLogin = () => {
-    // Navigate to building selection page on Google login
     navigate('/buildings');
   };
 
   const handleRegisterClick = (e) => {
     e.preventDefault();
-    alert('You clicked register link');
-    // Future: navigate('/register');
+    navigate('/register');
   };
 
   return (
-    <div className="login-container">
+    <div className="auth-container">
       {/* Background Image with Overlay */}
-      <div 
-        className="login-background"
-        style={{
-          backgroundImage: `url(/loginpic.jpg)`,
-        }}
+      <div
+        className="auth-background"
+        style={{ backgroundImage: `url(/loginpic.jpg)` }}
       />
-      <div className="login-overlay" />
+      <div className="auth-overlay" />
 
       {/* Login Card */}
-      <div className="login-card-wrapper">
-        <div className="login-card">
+      <div className="auth-card-wrapper">
+        <div className="auth-card">
           {/* Header */}
-          <div className="login-header">
-            <div className="login-logo-container">
+          <div className="auth-header">
+            <div className="auth-logo-container">
               <CitfixLogo size="lg" />
             </div>
-            <p className="login-subtitle">Report and track campus issues</p>
+            <p className="auth-subtitle">Report and track campus issues</p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="login-form">
-            {/* Email Input */}
+          <form onSubmit={handleSubmit} className="auth-form">
+            {/* Email */}
             <div className="form-group">
               <label htmlFor="email" className="form-label">Email</label>
               <input
@@ -61,11 +54,12 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 className="form-input"
+                autoComplete="email"
                 required
               />
             </div>
 
-            {/* Password Input */}
+            {/* Password */}
             <div className="form-group">
               <label htmlFor="password" className="form-label">Password</label>
               <input
@@ -75,24 +69,13 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 className="form-input"
+                autoComplete="current-password"
                 required
               />
             </div>
 
-            {/* Remember Me & Register */}
-            <div className="form-footer">
-              <div className="remember-me-group">
-                <input
-                  type="checkbox"
-                  id="remember"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="checkbox"
-                />
-                <label htmlFor="remember" className="checkbox-label">
-                  Remember me
-                </label>
-              </div>
+            {/* Register link (right-aligned) */}
+            <div className="form-footer only-link">
               <a href="#" onClick={handleRegisterClick} className="register-link">
                 Register
               </a>
@@ -100,14 +83,14 @@ export function LoginPage() {
 
             {/* Login Button */}
             <button type="submit" className="btn btn-primary">
-              <svg 
-                width="20" 
-                height="20" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               >
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
@@ -120,12 +103,10 @@ export function LoginPage() {
             {/* Divider */}
             <div className="divider">
               <div className="divider-line" />
-              <div className="divider-text">
-                <span>OR</span>
-              </div>
+              <div className="divider-text"><span>OR</span></div>
             </div>
 
-            {/* Google Login Button */}
+            {/* Google login */}
             <button
               type="button"
               className="btn btn-outline"

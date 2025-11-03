@@ -1,0 +1,28 @@
+.priority-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.badge-high {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-low {
+  background-color: #dbeafe;
+  color: #1e40af;
+}

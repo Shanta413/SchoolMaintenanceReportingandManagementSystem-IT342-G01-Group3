@@ -1,16 +1,19 @@
-export function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
+import React from 'react';
+import '../css/components_css/CitfixLogo.css';
+
+function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
   const sizes = {
     sm: { width: 120, height: 40 },
     md: { width: 160, height: 54 },
-    lg: { width: 200, height: 68 }
+    lg: { width: 200, height: 68 },
   };
-  
+
   const iconSizes = {
     sm: 32,
     md: 40,
-    lg: 48
+    lg: 48,
   };
-  
+
   if (variant === 'icon') {
     const iconSize = iconSizes[size];
     return (
@@ -51,9 +54,9 @@ export function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
       </svg>
     );
   }
-  
+
   const { width, height } = sizes[size];
-  
+
   return (
     <svg
       width={width}
@@ -85,6 +88,7 @@ export function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
           strokeLinejoin="round"
         />
       </g>
+
       <g transform="translate(54, 10)">
         <path
           d="M8 38.5C3.58172 38.5 0 34.9183 0 30.5V17.5C0 13.0817 3.58172 9.5 8 9.5H12V15.5H8C6.89543 15.5 6 16.3954 6 17.5V30.5C6 31.6046 6.89543 32.5 8 32.5H12V38.5H8Z"
@@ -105,6 +109,7 @@ export function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
           fill="#2563EB"
         />
       </g>
+
       <defs>
         <linearGradient id="logo-gradient" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#2563EB" />
@@ -114,3 +119,5 @@ export function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
     </svg>
   );
 }
+
+export default CitfixLogo;

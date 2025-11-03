@@ -1,0 +1,306 @@
+/* Shared styles for Login and Register pages */
+.auth-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.auth-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.auth-card-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 450px;
+  margin: 0 1rem;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Wider card for register page */
+.register-card-wrapper {
+  max-width: 700px;
+}
+
+.auth-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+/* Animation for card entrance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  animation: fadeIn 0.8s ease-out 0.2s both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.auth-subtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Two column grid for register form */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Responsive: single column on mobile */
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .register-card-wrapper {
+    max-width: 450px;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.5s ease-out both;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Stagger animation for form fields inside columns */
+.form-column .form-group:nth-child(1) { animation-delay: 0.1s; }
+.form-column .form-group:nth-child(2) { animation-delay: 0.15s; }
+.form-column .form-group:nth-child(3) { animation-delay: 0.2s; }
+.form-column .form-group:nth-child(4) { animation-delay: 0.25s; }
+
+.form-label {
+  color: #374151;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.form-input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.auth-footer-text {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.auth-link {
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.auth-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: -2px;
+  left: 0;
+  background-color: #2563eb;
+  transition: width 0.3s ease;
+}
+
+.auth-link:hover::after { width: 100%; }
+.auth-link:hover { color: #1d4ed8; }
+
+.btn {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.btn-primary:active { transform: translateY(0); }
+
+.btn-outline {
+  background-color: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  width: 100%;
+}
+
+.btn-outline:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline:active { transform: translateY(0); }
+
+.divider {
+  position: relative;
+  margin: 1.5rem 0;
+}
+
+.divider-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #d1d5db;
+}
+
+.divider-text {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.divider-text span {
+  background-color: white;
+  padding: 0 0.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Success Message */
+.success-message {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  border: 1px solid #6ee7b7;
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .auth-card { padding: 1.5rem; }
+  .auth-card-wrapper { margin: 1rem; }
+}
+
+@media (max-width: 480px) {
+  .auth-card { padding: 1.25rem; }
+  .form-input { padding: 0.625rem 0.875rem; font-size: 0.9375rem; }
+  .btn { padding: 0.625rem 0.875rem; font-size: 0.9375rem; }
+}
+
+/* Right-align the single Register link row */
+.form-footer.only-link {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+}
+
+.register-link {
+  font-size: 0.875rem;
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.register-link:hover { color: #1d4ed8; }
