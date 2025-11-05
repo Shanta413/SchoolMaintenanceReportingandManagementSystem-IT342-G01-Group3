@@ -1,83 +1,72 @@
-import React, { useState } from 'react';
-import { Settings, User } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../css/components_css/UserMenu.css';
 
-function UserMenu({ userName = 'User' }) {
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+function UserMenu({ userName }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
   const navigate = useNavigate();
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const handleLogout = () => {
-    setShowProfileDropdown(false);
-    // Add any logout logic here (e.g., clear tokens)
+    // Clear authToken from localStorage
+    localStorage.removeItem('authToken');
+    
+    // Close the menu
+    setIsOpen(false);
+    
+    // Redirect to login page
     navigate('/login');
   };
 
-  const handleGoToProfile = () => {
-    setShowProfileDropdown(false);
+  const handleProfile = () => {
+    setIsOpen(false);
     navigate('/profile');
   };
 
   return (
-    <div className="user-menu">
-      <div className="user-info">
-        <span className="user-name">{userName}</span>
-      </div>
-
-      <button className="icon-button">
-        <Settings size={20} />
+    <div className="user-menu" ref={menuRef}>
+      <button 
+        className="user-menu-button" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="user-avatar">
+          <User size={20} />
+        </div>
+        <span className="user-name">{userName || 'User'}</span>
+        <ChevronDown size={16} />
       </button>
 
-      <div className="profile-dropdown-container">
-        <button
-          className="icon-button user-avatar"
-          onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-          title="Profile Menu"
-        >
-          <User size={20} />
-        </button>
-
-        {showProfileDropdown && (
-          <>
-            <div
-              className="dropdown-overlay"
-              onClick={() => setShowProfileDropdown(false)}
-            />
-            <div className="profile-dropdown">
-              <button
-                className="dropdown-item"
-                onClick={handleGoToProfile}
-              >
-                <User size={18} />
-                <span>Go to Profile</span>
-              </button>
-
-              <div className="dropdown-divider" />
-
-              <button
-                className="dropdown-item logout-item"
-                onClick={handleLogout}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                <span>Logout</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      {isOpen && (
+        <div className="user-menu-dropdown">
+          <button className="menu-item" onClick={handleProfile}>
+            <Settings size={16} />
+            <span>Profile Settings</span>
+          </button>
+          <div className="menu-divider"></div>
+          <button className="menu-item logout" onClick={handleLogout}>
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
