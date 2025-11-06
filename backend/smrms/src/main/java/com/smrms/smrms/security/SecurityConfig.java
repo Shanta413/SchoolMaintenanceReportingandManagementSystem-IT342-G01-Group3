@@ -52,7 +52,7 @@ public class SecurityConfig {
 
                 // ✅ Add OAuth2 Login configuration
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2SuccessHandler)   // Use custom success handler
+                        .successHandler(oAuth2SuccessHandler)
                         .failureUrl("http://localhost:5173/login?error=true")
                 )
 

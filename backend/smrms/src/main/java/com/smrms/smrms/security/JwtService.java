@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,10 +28,16 @@ public class JwtService {
                 .claims(extraClaims)
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 1 day
                 .signWith(getSigningKey())
                 .compact();
     }
+
+    // ✅ helper overload
+    public String generateToken(String username) {
+        return generateToken(username, Collections.emptyMap());
+    }
+
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);

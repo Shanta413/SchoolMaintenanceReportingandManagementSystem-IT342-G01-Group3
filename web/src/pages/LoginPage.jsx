@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import CitfixLogo from "../components/CitfixLogo";
 import "../css/AuthPage.css";
+import useAuthToken from "../api/useAuthToken";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  useAuthToken(); // ✅ this line must run when /login loads
+
 
   // 🟢 If already logged in, redirect to buildings
   useEffect(() => {

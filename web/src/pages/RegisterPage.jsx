@@ -16,11 +16,19 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ✅ Toast notification
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
+
+  const showToast = (message, type = "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      showToast("Passwords do not match!", "error");
       return;
     }
 
@@ -35,18 +43,21 @@ export function RegisterPage() {
         studentDepartment: department,
       });
 
-      alert(response.data.message || "Registration successful!");
-      navigate("/login");
+      showToast(response.data.message || "Registration successful!", "success");
+      setTimeout(() => navigate("/login"), 1500);
     } catch (error) {
-      console.error("Registration failed:", error);
-      alert(error.response?.data?.message || "Error during registration.");
+      const msg =
+        error.response?.data?.message ||
+        (error.response?.status === 500
+          ? "Email is already used!"
+          : "Error during registration.");
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleRegister = () => {
-    // ✅ Redirect to Google OAuth registration/login
     window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
 
@@ -57,6 +68,13 @@ export function RegisterPage() {
 
   return (
     <div className="auth-container">
+      {/* ✅ Toast Notification */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+
       <div
         className="auth-background"
         style={{ backgroundImage: "url(/loginpic.jpg)" }}

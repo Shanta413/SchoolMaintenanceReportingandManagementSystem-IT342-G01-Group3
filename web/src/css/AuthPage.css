@@ -304,3 +304,43 @@
   transition: color 0.2s ease;
 }
 .register-link:hover { color: #1d4ed8; }
+/* ===== Toast Notification ===== */
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 260px;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  animation: slideInRight 0.4s ease, fadeOut 0.4s ease 2.8s forwards;
+}
+
+.toast.success {
+  background-color: #16a34a; /* green */
+}
+
+.toast.error {
+  background-color: #dc2626; /* red */
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+}

@@ -6,26 +6,42 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_roles")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserRole {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "role_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id")
     private Role role;
 
-    @Column(name = "user_role_created_at", nullable = false)
-    private LocalDateTime userRoleCreatedAt = LocalDateTime.now();  // ✅ Default
+    @Column(name = "user_role_created_at", nullable = false, updatable = false)
+    private LocalDateTime userRoleCreatedAt;
 
-    @Column(name = "user_role_update_at")
-    private LocalDateTime userRoleUpdateAt;
+    @Column(name = "user_role_updated_at")
+    private LocalDateTime userRoleUpdatedAt;
+
+    /**
+     * ✅ Auto-set timestamps before insert/update
+     */
+    @PrePersist
+    protected void onCreate() {
+        this.userRoleCreatedAt = LocalDateTime.now();
+        this.userRoleUpdatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.userRoleUpdatedAt = LocalDateTime.now();
+    }
 }

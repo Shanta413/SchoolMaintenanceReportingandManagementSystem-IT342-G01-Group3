@@ -3,6 +3,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import BuildingSelection from './pages/BuildingSelection';
 import ProfilePage from './pages/ProfilePage';
+import useAuthToken from './api/useAuthToken';
 import './App.css';
 
 function App() {

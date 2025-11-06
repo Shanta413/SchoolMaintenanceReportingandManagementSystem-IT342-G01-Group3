@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Mail, Phone, Calendar, MapPin, User, ArrowLeft } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  User,
+  ArrowLeft,
+  Upload,
+} from "lucide-react";
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient"; // ✅ Import Supabase client
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -15,12 +24,15 @@ const ProfilePage = () => {
     studentDepartment: "",
     createdAt: "",
     password: "",
+    avatarUrl: "",
+    authMethod: "",
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  // 🟢 Fetch profile from backend
+  // 🟢 Fetch user profile
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -43,6 +55,8 @@ const ProfilePage = () => {
             ? new Date(res.data.createdAt).toLocaleDateString()
             : "",
           password: "",
+          avatarUrl: res.data.avatarUrl || "",
+          authMethod: res.data.authMethod || "LOCAL",
         });
       })
       .catch((err) => {
@@ -65,7 +79,46 @@ const ProfilePage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 🟢 Update profile
+  // 🟢 Handle avatar selection
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (formData.authMethod === "GOOGLE") {
+      const confirmChange = window.confirm(
+        "Your Google profile image comes from your Google account. Do you still want to replace it using Supabase?"
+      );
+      if (!confirmChange) return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  // 🟢 Upload file to Supabase
+  const uploadAvatar = async (file) => {
+    try {
+      const sanitizedFileName = file.name.replace(/\s+/g, "_");
+      const fileName = `${Date.now()}_${sanitizedFileName}`;
+
+      const { error } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+
+      console.log("✅ Uploaded to Supabase:", publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error("❌ Upload error:", err);
+      throw err;
+    }
+  };
+
+  // 🟢 Save profile updates
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -74,22 +127,28 @@ const ProfilePage = () => {
     if (!token) return alert("Not authenticated!");
 
     try {
-      await axios.put("http://localhost:8080/api/user/profile", formData, {
+      let avatarUrl = formData.avatarUrl;
+
+      // ✅ Upload to Supabase if a new file is selected
+      if (selectedFile) {
+        avatarUrl = await uploadAvatar(selectedFile);
+      }
+
+      const updatedData = { ...formData, avatarUrl };
+
+      await axios.put("http://localhost:8080/api/user/profile", updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       alert("Profile updated successfully!");
+      setFormData({ ...formData, avatarUrl });
+      setSelectedFile(null);
     } catch (err) {
       console.error("Failed to update profile:", err);
       alert("Error updating profile. Try again later.");
     } finally {
       setSaving(false);
     }
-  };
-
-  // 🟢 Logout
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    navigate("/login");
   };
 
   if (loading) {
@@ -112,20 +171,44 @@ const ProfilePage = () => {
         </button>
 
         <div className="profile-header-content">
-          <div className="avatar-circle">{getInitials(formData.fullname)}</div>
+          <div className="avatar-container">
+            {formData.avatarUrl || selectedFile ? (
+              <img
+                src={
+                  selectedFile
+                    ? URL.createObjectURL(selectedFile)
+                    : formData.avatarUrl
+                }
+                alt="avatar"
+                className="avatar-img"
+              />
+            ) : (
+              <div className="avatar-circle">{getInitials(formData.fullname)}</div>
+            )}
+
+            {/* Upload Button (Local only) */}
+            {formData.authMethod === "LOCAL" && (
+              <label className="upload-avatar-btn">
+                <Upload size={16} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleAvatarUpload}
+                />
+              </label>
+            )}
+          </div>
+
           <div>
             <h2>{formData.fullname}</h2>
             <p>{formData.studentDepartment}</p>
             <p className="email">{formData.email}</p>
           </div>
         </div>
-
-        <button className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button>
       </div>
 
-      {/* ===== Profile Information Section ===== */}
+      {/* ===== Profile Info Section ===== */}
       <div className="profile-body">
         <div className="profile-card">
           <h3>Profile Information</h3>
@@ -196,7 +279,8 @@ const ProfilePage = () => {
                     type="text"
                     name="studentDepartment"
                     value={formData.studentDepartment}
-                    readOnly
+                    onChange={handleChange} // ✅ made editable
+                    placeholder="Enter department"
                   />
                 </div>
               </div>
@@ -227,11 +311,7 @@ const ProfilePage = () => {
             </div>
 
             <div className="form-actions">
-              <button
-                type="submit"
-                className="save-btn"
-                disabled={saving}
-              >
+              <button type="submit" className="save-btn" disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>

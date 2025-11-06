@@ -16,19 +16,23 @@ import java.util.Set;
 @Builder
 public class User {
 
-    // ✅ Use manual UUID generation (remove @GeneratedValue)
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)  // ✅ Automatically generate UUID
     @Column(length = 36, nullable = false, updatable = false)
     private String id;
 
     @Column(length = 255, nullable = false)
     private String fullname;
 
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     @Column(length = 255, nullable = false, unique = true)
     private String email;
 
-    @Column(length = 255, nullable = false)
+    @Column(length = 255, nullable = true)
     private String password;
+
 
     @Column(name = "mobile_number", length = 15)
     private String mobileNumber;
@@ -48,11 +52,13 @@ public class User {
     @Column(name = "password_updated_at")
     private LocalDateTime passwordUpdatedAt;
 
-    // ✅ Cascade relationships remain the same
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private Set<UserRole> userRoles = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Student> students;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Student student;
 }

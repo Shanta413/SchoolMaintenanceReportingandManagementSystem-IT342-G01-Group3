@@ -17,7 +17,7 @@ while Maintenance Staff and Admins manage, update, and analyze issues through da
 - **Frontend (Web):** ReactJS  
 - **Mobile App:** Android (Kotlin)  
 - **Backend:** Spring Boot (Java)  
-- **Database:** MySQL / SupaBase
+- **Database:** Posgres / SupaBase
 - **Authentication:** Firebase Authentication (Google OAuth 2.0)  
 - **Hosting/Deployment:** Firebase Hosting / Heroku / Custom Platform  
 

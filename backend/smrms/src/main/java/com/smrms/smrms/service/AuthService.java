@@ -7,13 +7,13 @@ import com.smrms.smrms.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -24,8 +24,17 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * ✅ Register a new LOCAL user
+     */
     public AuthResponse register(RegisterRequest request) {
-        // Create user
+
+        // 🔍 Check if email already exists
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        // 🆕 Create a new user (Hibernate auto-generates UUID)
         User user = User.builder()
                 .fullname(request.getFullname())
                 .email(request.getEmail())
@@ -38,39 +47,56 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Assign default role
-        Role role = roleRepository.findByRoleName("Student")
-                .orElseGet(() -> roleRepository.save(Role.builder()
-                        .roleName("Student")
-                        .roleCreatedAt(LocalDateTime.now())
-                        .build()));
+        // 🎓 Assign default role: STUDENT
+        Role studentRole = roleRepository.findByRoleName("STUDENT")
+                .orElseGet(() -> roleRepository.save(
+                        Role.builder()
+                                .roleName("STUDENT")
+                                .roleCreatedAt(LocalDateTime.now())
+                                .build()
+                ));
 
-        userRoleRepository.save(UserRole.builder()
+        // 🧩 Link user to role — FIX: set userRoleCreatedAt
+        UserRole userRole = UserRole.builder()
                 .user(user)
-                .role(role)
+                .role(studentRole)
                 .userRoleCreatedAt(LocalDateTime.now())
-                .build());
+                .build();
+        userRoleRepository.save(userRole);
 
-        // Save student info
-        studentRepository.save(Student.builder()
+        // 🧍 Create student profile linked to user
+        Student student = Student.builder()
                 .user(user)
-                .studentIdNumber(request.getStudentIdNumber())
                 .studentDepartment(request.getStudentDepartment())
-                .build());
+                .studentIdNumber(request.getStudentIdNumber())
+                .build();
+        studentRepository.save(student);
 
-        String token = jwtService.generateToken(user.getEmail(), Collections.emptyMap());
-        return new AuthResponse(token, "Registration successful!");
+        // 🔑 Generate JWT token
+        String jwtToken = jwtService.generateToken(user.getEmail());
+
+        // ✅ Return response
+        return new AuthResponse(jwtToken, user.getEmail(), "Registered successfully");
     }
 
+    /**
+     * ✅ Login an existing LOCAL user
+     */
     public AuthResponse login(LoginRequest request) {
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
-        if (userOpt.isEmpty()) throw new RuntimeException("User not found!");
 
-        User user = userOpt.get();
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
-            throw new RuntimeException("Invalid password!");
+        // 1️⃣ Find user by email
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-        String token = jwtService.generateToken(user.getEmail(), Collections.emptyMap());
-        return new AuthResponse(token, "Login successful!");
+        // 2️⃣ Verify password
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+
+        // 3️⃣ Generate JWT
+        String jwtToken = jwtService.generateToken(user.getEmail());
+
+        // 4️⃣ Return successful login response
+        return new AuthResponse(jwtToken, user.getEmail(), "Login successful");
     }
 }

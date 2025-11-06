@@ -65,9 +65,28 @@
   color: white;
 }
 
-.avatar-circle {
+/* ===== Avatar Styles ===== */
+.avatar-container {
+  position: relative;
   width: 80px;
   height: 80px;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  border: 4px solid white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: block;
+}
+
+.avatar-circle {
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   background-color: #2563eb;
   display: flex;
@@ -80,6 +99,56 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.upload-avatar-btn {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background: #2563eb;
+  border: 3px solid white;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.upload-avatar-btn:hover {
+  background: #1d4ed8;
+  transform: scale(1.1);
+}
+
+.upload-avatar-btn input[type="file"] {
+  display: none;
+}
+
+/* ===== Logout Button ===== */
+.logout-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 2rem;
+  z-index: 10;
+  padding: 0.625rem 1.5rem;
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgb(220, 38, 38);
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+}
+
+/* ===== Profile Header Content ===== */
 .profile-header-content h2 {
   font-size: 1.875rem;
   font-weight: 700;
@@ -223,6 +292,12 @@
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
 }
 
+.save-btn:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* ===== Responsive Design ===== */
 @media (max-width: 768px) {
   .profile-header {
@@ -236,10 +311,30 @@
     gap: 1rem;
   }
 
-  .avatar-circle {
+  .avatar-container {
     width: 60px;
     height: 60px;
+  }
+
+  .avatar-circle {
     font-size: 1.5rem;
+  }
+
+  .upload-avatar-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .upload-avatar-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .logout-btn {
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
   }
 
   .profile-header-content h2 {

@@ -15,13 +15,14 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(name = "student_department", nullable = false)
+    @Column(name = "student_department", nullable = true)
     private String studentDepartment;
 
-    @Column(name = "student_id_number", nullable = false)
+    @Column(name = "student_id_number", nullable = true)
     private String studentIdNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    // ✅ Each student links to one user
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }
