@@ -11,4 +11,7 @@ public interface RoleRepository extends JpaRepository<Role, String> {
 
     // ✅ Must match field name in Role.java
     Optional<Role> findByRoleName(String roleName);
+
+    boolean existsByRoleName(String admin);
+
 }

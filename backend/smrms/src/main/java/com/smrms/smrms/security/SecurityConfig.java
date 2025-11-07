@@ -27,48 +27,50 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final com.smrms.smrms.security.service.CustomUserDetailsService customUserDetailsService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler; // ✅ inject custom OAuth2 handler
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF (we're using JWT + SPA)
+                // 🔒 Disable CSRF for SPA + JWT
                 .csrf(csrf -> csrf.disable())
 
-                // Enable CORS for frontend React app
+                // 🌐 Allow frontend (Vite) connection
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // Route access control
+                // 🚦 Authorization rules
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",   // Register/Login endpoints
-                                "/oauth2/**",     // Google OAuth2 endpoints
+                                "/api/auth/**",          // Local login/register
+                                "/oauth2/**",            // Google OAuth2 endpoints
                                 "/login/**",
                                 "/error",
-                                "/api/public/**"
+                                "/api/public/**",
+                                "/api/students/**"       // 👈 Allow React admin Users.jsx to fetch students
                         ).permitAll()
+                        // everything else needs authentication
                         .anyRequest().authenticated()
                 )
 
-                // ✅ Add OAuth2 Login configuration
+                // 🔑 OAuth2 (Google login)
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2SuccessHandler)
                         .failureUrl("http://localhost:5173/login?error=true")
                 )
 
-                // Stateless session (JWT only)
+                // 🪶 JWT only → no HTTP session
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Custom authentication provider
+                // ⚙️ Add authentication provider (for local users)
                 .authenticationProvider(authenticationProvider())
 
-                // Add JWT filter before UsernamePasswordAuthenticationFilter
+                // 🧩 Add JWT filter before username/password filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // ✅ Authentication provider (for local login)
+    // ✅ Local authentication provider (for LOCAL login)
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -77,19 +79,19 @@ public class SecurityConfig {
         return provider;
     }
 
-    // ✅ AuthenticationManager for Spring Security
+    // ✅ Authentication manager (used in AuthService)
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // ✅ Password encoder (BCrypt)
+    // ✅ BCrypt encoder for password hashing
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // ✅ Allow React (localhost:5173) to access backend (localhost:8080)
+    // ✅ CORS setup: allow React (localhost:5173)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();

@@ -9,15 +9,19 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  useAuthToken(); // ✅ this line must run when /login loads
+  useAuthToken(); // ✅ Google OAuth token handler
 
-
-  // 🟢 If already logged in, redirect to buildings
+  // 🟢 If already logged in, redirect by role
   useEffect(() => {
     const token = localStorage.getItem("authToken");
-    if (token) navigate("/buildings");
+    const role = localStorage.getItem("userRole");
+    if (token && role) {
+      if (role === "ADMIN") navigate("/staff/dashboard");
+      else navigate("/buildings");
+    }
   }, [navigate]);
 
+  // 🧩 Handle login form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -32,8 +36,13 @@ export function LoginPage() {
       if (!res.ok) throw new Error("Invalid credentials");
       const data = await res.json();
 
+      // ✅ Store auth info
       localStorage.setItem("authToken", data.token);
-      navigate("/buildings");
+      localStorage.setItem("userRole", data.role);
+
+      // ✅ Redirect by role
+      if (data.role === "ADMIN") navigate("/staff/dashboard");
+      else navigate("/buildings");
     } catch (err) {
       alert("Login failed. Please check your credentials.");
       console.error(err);

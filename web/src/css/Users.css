@@ -1,0 +1,253 @@
+.users-page {
+  max-width: 1400px;
+}
+
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.users-header h1 {
+  font-size: 28px;
+  color: #1f2937;
+  margin: 0 0 5px 0;
+  font-weight: 600;
+}
+
+.users-subtitle {
+  color: #6b7280;
+  margin: 0;
+  font-size: 14px;
+}
+
+.users-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.tab:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.tab.active {
+  background-color: #1f2937;
+  color: white;
+  border-color: #1f2937;
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.users-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-icon {
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.search-box input::placeholder {
+  color: #9ca3af;
+}
+
+.add-user-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.add-user-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.users-table-container {
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table thead {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.users-table th {
+  text-align: left;
+  padding: 16px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.users-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.users-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.users-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.user-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  flex-shrink: 0;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn,
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  line-height: 1;
+}
+
+.edit-btn:hover {
+  background-color: #eff6ff;
+}
+
+.delete-btn:hover {
+  background-color: #fef2f2;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+.modal input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.modal-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.modal-actions .primary {
+  background: #2563eb;
+  color: white;
+}
+
+.modal-actions .danger {
+  background: #e11d48;
+  color: white;
+}

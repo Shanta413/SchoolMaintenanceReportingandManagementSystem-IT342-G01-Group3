@@ -25,7 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * ✅ Register a new LOCAL user
+     * ✅ Register a new LOCAL user (default: STUDENT)
      */
     public AuthResponse register(RegisterRequest request) {
 
@@ -34,7 +34,7 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
-        // 🆕 Create a new user (Hibernate auto-generates UUID)
+        // 🆕 Create a new user
         User user = User.builder()
                 .fullname(request.getFullname())
                 .email(request.getEmail())
@@ -47,7 +47,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 🎓 Assign default role: STUDENT
+        // 🎓 Assign default STUDENT role
         Role studentRole = roleRepository.findByRoleName("STUDENT")
                 .orElseGet(() -> roleRepository.save(
                         Role.builder()
@@ -56,7 +56,7 @@ public class AuthService {
                                 .build()
                 ));
 
-        // 🧩 Link user to role — FIX: set userRoleCreatedAt
+        // 🧩 Link user to STUDENT role
         UserRole userRole = UserRole.builder()
                 .user(user)
                 .role(studentRole)
@@ -64,7 +64,7 @@ public class AuthService {
                 .build();
         userRoleRepository.save(userRole);
 
-        // 🧍 Create student profile linked to user
+        // 🧍 Create student profile
         Student student = Student.builder()
                 .user(user)
                 .studentDepartment(request.getStudentDepartment())
@@ -72,31 +72,45 @@ public class AuthService {
                 .build();
         studentRepository.save(student);
 
-        // 🔑 Generate JWT token
+        // 🔑 Generate JWT
         String jwtToken = jwtService.generateToken(user.getEmail());
 
-        // ✅ Return response
-        return new AuthResponse(jwtToken, user.getEmail(), "Registered successfully");
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .email(user.getEmail())
+                .role("STUDENT")
+                .message("Registered successfully")
+                .build();
     }
 
     /**
-     * ✅ Login an existing LOCAL user
+     * ✅ Login an existing LOCAL user (handles both ADMIN & STUDENT)
      */
     public AuthResponse login(LoginRequest request) {
-
-        // 1️⃣ Find user by email
+        // 1️⃣ Find user
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-        // 2️⃣ Verify password
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        // 2️⃣ Verify password (only for LOCAL accounts)
+        if ("LOCAL".equals(user.getAuthMethod()) &&
+                !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid email or password");
         }
 
-        // 3️⃣ Generate JWT
+        // 3️⃣ Get user's role (ADMIN, STUDENT, etc.)
+        String roleName = userRoleRepository.findByUser(user)
+                .map(userRole -> userRole.getRole().getRoleName())
+                .orElse("STUDENT"); // default fallback
+
+        // 4️⃣ Generate JWT
         String jwtToken = jwtService.generateToken(user.getEmail());
 
-        // 4️⃣ Return successful login response
-        return new AuthResponse(jwtToken, user.getEmail(), "Login successful");
+        // 5️⃣ Return success
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .email(user.getEmail())
+                .role(roleName)
+                .message("Login successful")
+                .build();
     }
 }

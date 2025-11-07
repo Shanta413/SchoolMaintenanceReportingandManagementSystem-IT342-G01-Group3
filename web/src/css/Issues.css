@@ -1,0 +1,48 @@
+.issues-page {
+  max-width: 1400px;
+}
+
+.issues-header h1 {
+  font-size: 28px;
+  color: #1f2937;
+  margin: 0 0 5px 0;
+  font-weight: 600;
+}
+
+.issues-subtitle {
+  color: #6b7280;
+  margin: 0;
+  font-size: 14px;
+}
+
+.issues-content {
+  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 24px;
+  color: #1f2937;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
