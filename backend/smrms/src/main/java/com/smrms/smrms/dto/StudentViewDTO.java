@@ -17,4 +17,6 @@ public class StudentViewDTO {
     private String studentDepartment;
     private String studentIdNumber;
     private String password; // ✅ Added for auto-create users
+    private String avatarUrl; // ✅ Add this
+
 }

@@ -50,7 +50,8 @@ public class StudentController {
                 u.getMobileNumber(),
                 s.getStudentDepartment(),
                 s.getStudentIdNumber(),
-                "" // password placeholder
+                "",                 // password placeholder
+                u.getAvatarUrl()    // ✅ new field
         );
 
         return ResponseEntity.ok(dto);

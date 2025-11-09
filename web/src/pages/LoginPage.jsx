@@ -16,8 +16,11 @@ export function LoginPage() {
     const token = localStorage.getItem("authToken");
     const role = localStorage.getItem("userRole");
     if (token && role) {
-      if (role === "ADMIN") navigate("/staff/dashboard");
-      else navigate("/buildings");
+      if (role === "ADMIN" || role === "MAINTENANCE_STAFF") {
+        navigate("/staff/dashboard");
+      } else {
+        navigate("/buildings");
+      }
     }
   }, [navigate]);
 
@@ -41,8 +44,11 @@ export function LoginPage() {
       localStorage.setItem("userRole", data.role);
 
       // ✅ Redirect by role
-      if (data.role === "ADMIN") navigate("/staff/dashboard");
-      else navigate("/buildings");
+      if (data.role === "ADMIN" || data.role === "MAINTENANCE_STAFF") {
+        navigate("/staff/dashboard");
+      } else {
+        navigate("/buildings");
+      }
     } catch (err) {
       alert("Login failed. Please check your credentials.");
       console.error(err);
@@ -62,7 +68,10 @@ export function LoginPage() {
 
   return (
     <div className="auth-container">
-      <div className="auth-background" style={{ backgroundImage: `url(/loginpic.jpg)` }} />
+      <div
+        className="auth-background"
+        style={{ backgroundImage: `url(/loginpic.jpg)` }}
+      />
       <div className="auth-overlay" />
 
       <div className="auth-card-wrapper">
@@ -76,7 +85,9 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-group">
-              <label htmlFor="email" className="form-label">Email</label>
+              <label htmlFor="email" className="form-label">
+                Email
+              </label>
               <input
                 id="email"
                 type="email"
@@ -90,7 +101,9 @@ export function LoginPage() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password" className="form-label">Password</label>
+              <label htmlFor="password" className="form-label">
+                Password
+              </label>
               <input
                 id="password"
                 type="password"
@@ -115,7 +128,9 @@ export function LoginPage() {
 
             <div className="divider">
               <div className="divider-line" />
-              <div className="divider-text"><span>OR</span></div>
+              <div className="divider-text">
+                <span>OR</span>
+              </div>
             </div>
 
             <button

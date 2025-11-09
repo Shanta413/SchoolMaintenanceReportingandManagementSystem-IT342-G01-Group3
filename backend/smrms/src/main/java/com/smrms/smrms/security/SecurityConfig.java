@@ -1,5 +1,6 @@
 package com.smrms.smrms.security;
 
+import jakarta.servlet.http.HttpServletResponse; // ⬅️ added
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,16 +42,31 @@ public class SecurityConfig {
                 // 🚦 Authorization rules
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",          // Local login/register
-                                "/oauth2/**",            // Google OAuth2 endpoints
+                                "/api/auth/**",     // Local login/register
+                                "/oauth2/**",       // Google OAuth2 endpoints
                                 "/login/**",
                                 "/error",
-                                "/api/public/**",
-                                "/api/students/**"       // 👈 Allow React admin Users.jsx to fetch students
+                                "/api/public/**"
                         ).permitAll()
-                        // everything else needs authentication
+
+                        // Staff-only API space (both ADMIN & MAINTENANCE_STAFF)
+                        .requestMatchers("/api/staff/**").hasAnyRole("ADMIN","MAINTENANCE_STAFF")
+
+                        // Admin-only management APIs
+                        .requestMatchers("/api/students/**").hasRole("ADMIN")
+
+                        // Everything else needs authentication
                         .anyRequest().authenticated()
                 )
+
+                // ⛔ For /api/** without token, return 401 instead of redirecting to Google
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {
+                    if (req.getRequestURI().startsWith("/api/")) {
+                        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                    } else {
+                        res.sendRedirect("/login");
+                    }
+                }))
 
                 // 🔑 OAuth2 (Google login)
                 .oauth2Login(oauth2 -> oauth2
@@ -61,7 +77,7 @@ public class SecurityConfig {
                 // 🪶 JWT only → no HTTP session
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // ⚙️ Add authentication provider (for local users)
+                // ⚙️ Local authentication provider (for LOCAL users)
                 .authenticationProvider(authenticationProvider())
 
                 // 🧩 Add JWT filter before username/password filter
