@@ -119,6 +119,7 @@ export function RegisterPage() {
                     onChange={(e) => setStudentId(e.target.value)}
                     placeholder="Enter your student ID"
                     className="form-input"
+                    maxLength={11}
                     required
                   />
                 </div>
@@ -134,6 +135,7 @@ export function RegisterPage() {
                     onChange={(e) => setDepartment(e.target.value)}
                     placeholder="Enter your department"
                     className="form-input"
+                      maxLength={10}   
                     required
                   />
                 </div>
@@ -166,6 +168,7 @@ export function RegisterPage() {
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="Enter your phone number"
                     className="form-input"
+                    maxLength={11}   // 👈 Phone: 11
                     required
                   />
                 </div>

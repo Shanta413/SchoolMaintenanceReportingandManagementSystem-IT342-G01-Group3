@@ -29,9 +29,8 @@ import java.util.UUID;
 
 /**
  * Handles Google OAuth2 logins:
- * - Creates user if new
- * - Keeps LOCAL users unchanged
- * - Uploads Google avatar to Supabase (server-side, service role)
+ * - Creates user if new (but does NOT change existing LOCAL accounts)
+ * - Uploads Google avatar ONCE to Supabase if user has no avatar yet
  * - Ensures STUDENT role + Student record
  * - Redirects frontend with JWT + role
  */
@@ -55,6 +54,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${supabase.service_key}")
     private String supabaseServiceKey;
 
+    // Change this if your frontend base URL differs in prod
+    private static final String FRONTEND_LOGIN_REDIRECT = "http://localhost:5173/login";
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
@@ -64,14 +66,15 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         String email   = oAuth2User.getAttribute("email");
         String name    = oAuth2User.getAttribute("name");
-        String picture = oAuth2User.getAttribute("picture"); // Google profile photo
+        String picture = oAuth2User.getAttribute("picture"); // Google profile photo URL
 
         if (email == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No email from Google account");
             return;
         }
 
-        // find-or-create user by email
+        // Find or create user by email.
+        // If an existing LOCAL user logs in with Google (same email), we DO NOT flip authMethod.
         User user = userRepository.findByEmail(email).orElseGet(() -> {
             User newUser = User.builder()
                     .fullname(name)
@@ -84,23 +87,25 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return userRepository.save(newUser);
         });
 
-        // don't overwrite LOCAL users
-        if ("GOOGLE".equalsIgnoreCase(user.getAuthMethod())) {
-            // upload Google avatar once
-            if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && picture != null) {
-                try {
-                    String uploadedUrl = uploadImageToSupabase(picture);
-                    user.setAvatarUrl(uploadedUrl);
-                } catch (Exception e) {
-                    // fallback to Google URL so UI still shows an image
+        // Upload avatar exactly once if missing, regardless of auth method (LOCAL or GOOGLE).
+        // This guarantees: once the user has an avatar (e.g., set via Profile page),
+        // future Google logins won't overwrite it.
+        if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && picture != null) {
+            try {
+                String uploadedUrl = uploadImageToSupabase(picture);
+                user.setAvatarUrl(uploadedUrl);
+                System.out.println("✅ Avatar uploaded to Supabase: " + uploadedUrl);
+            } catch (Exception e) {
+                // Only fallback to Google picture if we STILL have no avatar
+                if (user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) {
                     user.setAvatarUrl(picture);
-                    System.err.println("Avatar upload failed, using Google picture URL. Reason: " + e.getMessage());
                 }
-                userRepository.save(user);
+                System.err.println("⚠️ Avatar upload failed, using Google picture URL. Reason: " + e.getMessage());
             }
+            userRepository.save(user);
         }
 
-        // ensure STUDENT role exists
+        // Ensure STUDENT role exists
         Role studentRole = roleRepository.findByRoleName("STUDENT")
                 .orElseGet(() -> roleRepository.save(
                         Role.builder()
@@ -109,7 +114,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                                 .build()
                 ));
 
-        // assign STUDENT role if missing
+        // Assign STUDENT role if missing
         if (!userRoleRepository.existsByUserAndRole(user, studentRole)) {
             userRoleRepository.save(UserRole.builder()
                     .user(user)
@@ -118,11 +123,11 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                     .build());
         }
 
-        // create student profile if missing
+        // Create student profile if missing
         studentRepository.findByUser(user).orElseGet(() -> {
             Student student = Student.builder()
                     .user(user)
-                    .studentDepartment("BSIT") // optional default
+                    .studentDepartment("BSIT") // default, adjust if needed
                     .studentIdNumber(null)
                     .build();
             return studentRepository.save(student);
@@ -134,16 +139,18 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .map(ur -> ur.getRole().getRoleName())
                 .orElse("STUDENT");
 
-        // redirect back to frontend with token + role
-        response.sendRedirect("http://localhost:5173/login?token=" + token + "&role=" + roleName);
+        // Redirect back to frontend with token + role
+        // (Frontend should ignore any Google "picture" and only use /api/user/profile -> avatarUrl)
+        String redirect = FRONTEND_LOGIN_REDIRECT + "?token=" + token + "&role=" + roleName;
+        response.sendRedirect(redirect);
     }
 
     /**
-     * Downloads an image from Google and uploads it to Supabase Storage.
+     * Downloads an image from Google and uploads it to Supabase Storage (public bucket).
      * Returns the public Supabase URL.
      */
     private String uploadImageToSupabase(String imageUrl) throws IOException {
-        // 1) download from Google (handle redirects)
+        // 1) Download from Google (handle redirects)
         URL url = new URL(imageUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setInstanceFollowRedirects(true);
@@ -166,7 +173,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             imageBytes = buffer.toByteArray();
         }
 
-        // 2) upload to Supabase (service role)
+        // 2) Upload to Supabase (service role)
         String fileName = UUID.randomUUID() + ".jpg";
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + supabaseBucket + "/" + fileName);
 
@@ -176,10 +183,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         uploadConn.setConnectTimeout(8000);
         uploadConn.setReadTimeout(8000);
 
-        // both headers are required by Supabase Storage REST
+        // Required headers for Supabase Storage REST
         uploadConn.setRequestProperty("Authorization", "Bearer " + supabaseServiceKey);
         uploadConn.setRequestProperty("apikey", supabaseServiceKey);
-
         uploadConn.setRequestProperty("Content-Type", "image/jpeg");
         uploadConn.setRequestProperty("x-upsert", "true");
 
@@ -199,7 +205,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             throw new IOException("Supabase upload failed (HTTP " + uploadCode + "): " + err);
         }
 
-        // 3) public URL (bucket must be public)
+        // 3) Public URL (bucket must be public)
         return supabaseUrl + "/storage/v1/object/public/" + supabaseBucket + "/" + fileName;
     }
 }

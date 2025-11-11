@@ -5,12 +5,15 @@ import com.smrms.smrms.dto.ProfileUpdateRequest;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.repository.UserRepository;
+import com.smrms.smrms.service.SupabaseStorageService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -23,6 +26,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SupabaseStorageService supabaseStorageService;
 
     // ✅ GET: fetch current user profile (for logged-in user)
     @GetMapping("/profile")
@@ -64,7 +68,7 @@ public class UserController {
         }
     }
 
-    // ✅ PUT: update logged-in user profile
+    // ✅ PUT: update logged-in user profile (JSON body)
     @PutMapping("/profile")
     @Transactional
     public ResponseEntity<?> updateProfile(
@@ -86,12 +90,10 @@ public class UserController {
             if (request.getMobileNumber() != null && !request.getMobileNumber().isBlank()) {
                 user.setMobileNumber(request.getMobileNumber());
             }
-            if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
-                user.setAvatarUrl(request.getAvatarUrl());
-            }
 
             // ✅ Handle student info properly
-            if (user.getStudent() == null && (request.getStudentDepartment() != null || request.getStudentIdNumber() != null)) {
+            if (user.getStudent() == null &&
+                    (request.getStudentDepartment() != null || request.getStudentIdNumber() != null)) {
                 user.setStudent(Student.builder()
                         .studentDepartment(request.getStudentDepartment())
                         .studentIdNumber(request.getStudentIdNumber())
@@ -106,20 +108,54 @@ public class UserController {
                 }
             }
 
-            // ✅ Update password if provided
+            // ✅ Update password if provided (LOCAL users typically)
             if (request.getPassword() != null && !request.getPassword().isBlank()) {
                 user.setPassword(passwordEncoder.encode(request.getPassword()));
                 user.setPasswordUpdatedAt(LocalDateTime.now());
             }
 
             user.setUpdateAt(LocalDateTime.now());
-            userRepository.save(user);
+            userRepository.saveAndFlush(user);
 
             return ResponseEntity.ok("✅ Profile updated successfully!");
 
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error updating profile: " + e.getMessage());
+        }
+    }
+
+    // ✅ PUT: update avatar via multipart (works for LOCAL and GOOGLE)
+    @PutMapping(path = "/profile/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Transactional
+    public ResponseEntity<?> updateAvatar(
+            Authentication authentication,
+            @RequestPart("file") MultipartFile file
+    ) {
+        try {
+            if (authentication == null || authentication.getName() == null) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+
+            String email = authentication.getName();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+            // ⬆️ upload to Supabase (service) — single-arg method!
+            String publicUrl = supabaseStorageService.upload(file);
+
+            // persist to DB
+            user.setAvatarUrl(publicUrl);
+            user.setUpdateAt(LocalDateTime.now());
+            userRepository.saveAndFlush(user);
+
+            // return the new URL so frontend can refresh
+            return ResponseEntity.ok(Map.of("avatarUrl", publicUrl));
+        } catch (org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+            return ResponseEntity.status(413).body("File too large");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Upload failed: " + e.getMessage());
         }
     }
 
@@ -150,7 +186,7 @@ public class UserController {
             }
 
             user.setUpdateAt(LocalDateTime.now());
-            userRepository.save(user);
+            userRepository.saveAndFlush(user);
 
             return ResponseEntity.ok("✅ User updated successfully!");
 
