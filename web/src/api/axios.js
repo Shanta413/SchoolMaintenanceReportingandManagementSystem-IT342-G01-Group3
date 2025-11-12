@@ -6,7 +6,7 @@ const BASE_URL = "https://your-backend-railway-url.up.railway.app/api";
 
 // ✅ Create Axios instance
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: "https://backend-production-4aa1.up.railway.app/api",
   headers: { "Content-Type": "application/json" },
 });
 
