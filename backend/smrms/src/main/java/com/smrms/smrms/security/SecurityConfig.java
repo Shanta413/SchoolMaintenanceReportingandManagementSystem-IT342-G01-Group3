@@ -118,6 +118,7 @@ public CorsConfigurationSource corsConfigurationSource() {
         "https://frontend-production-e168.up.railway.app",
         "http://localhost:5173" // optional, for local dev
     ));
+    config.setAllowedHeaders(List.of("*"));
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
     config.setAllowCredentials(true);
