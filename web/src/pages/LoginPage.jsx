@@ -58,7 +58,7 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = "https://backend-production-4aa1.up.railway.app/oauth2/authorization/google";
   };
 
   const handleRegisterClick = (e) => {
