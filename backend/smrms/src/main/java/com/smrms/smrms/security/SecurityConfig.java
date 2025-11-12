@@ -41,6 +41,7 @@ public class SecurityConfig {
 
                 // 🚦 Authorization rules
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/**",     // Local login/register
                                 "/oauth2/**",       // Google OAuth2 endpoints
