@@ -55,7 +55,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private String supabaseServiceKey;
 
     // Change this if your frontend base URL differs in prod
-    private static final String FRONTEND_LOGIN_REDIRECT = "http://localhost:5173/login";
+    private static final String FRONTEND_LOGIN_REDIRECT = "https://frontend-production-e168.up.railway.app/login";
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
