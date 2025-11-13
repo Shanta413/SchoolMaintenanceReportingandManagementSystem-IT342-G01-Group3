@@ -1,0 +1,20 @@
+package com.smrms.smrms.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * ✅ AuthResponse used for /register and /login responses
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+    private String token;
+    private String email;
+    private String role;
+    private String message;
+}
