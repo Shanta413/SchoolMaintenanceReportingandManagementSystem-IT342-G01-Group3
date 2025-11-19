@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import Header from "../components/Header";
@@ -7,7 +7,7 @@ import SearchBar from "../components/SearchBar";
 import FilterDropdown from "../components/FilterDropdown";
 import CampusMapModal from "../components/CampusMapModal";
 import "../css/BuildingSelection.css";
-import { getAllBuildings } from "../api/building"; // <-- use your API
+import { getAllBuildings } from "../api/building";
 
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
@@ -86,9 +86,11 @@ function BuildingSelection() {
     return filtered;
   }, [searchQuery, priorityFilter, buildings]);
 
+  // 👇 Use buildingCode for navigation (not id)
   const handleBuildingClick = (building) => {
-    // Example: navigate to issue submission for building
-    navigate(`/buildings/${building.id}`);
+    if (building.buildingCode) {
+      navigate(`/buildings/${building.buildingCode}`);
+    }
   };
 
   return (
@@ -138,10 +140,10 @@ function BuildingSelection() {
                       id: b.id,
                       name: b.buildingName,
                       subtitle: b.buildingCode,
-                      image: b.buildingImageUrl, // make sure this matches your backend
+                      image: b.buildingImageUrl, // from backend
                       issues: b.issueCount || { high: 0, medium: 0, low: 0 }, // adapt if needed
                     }}
-                    onClick={handleBuildingClick}
+                    onClick={() => handleBuildingClick(b)}
                   />
                 ))
               )}

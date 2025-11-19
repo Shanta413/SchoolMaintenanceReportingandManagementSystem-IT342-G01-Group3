@@ -19,8 +19,12 @@ public class BuildingService {
     private final BuildingRepository buildingRepository;
     private final SupabaseStorageService supabaseStorageService;
 
+    /**
+     * Create new building
+     */
     public BuildingResponse createBuilding(BuildingCreateRequest request, MultipartFile file) throws Exception {
-        // Check for uniqueness
+
+        // uniqueness checks
         if (buildingRepository.existsByBuildingCode(request.getBuildingCode())) {
             throw new RuntimeException("Building code already exists");
         }
@@ -28,6 +32,7 @@ public class BuildingService {
             throw new RuntimeException("Building name already exists");
         }
 
+        // Upload image to Supabase if provided
         String imageUrl = null;
         if (file != null && !file.isEmpty()) {
             imageUrl = supabaseStorageService.upload(file);
@@ -44,26 +49,39 @@ public class BuildingService {
 
         building = buildingRepository.save(building);
 
+        return toResponse(building);
+    }
+
+    /**
+     * Get all active buildings
+     */
+    public List<BuildingResponse> getActiveBuildings() {
+        return buildingRepository.findAllByBuildingIsActiveTrue()
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * NEW — get building by code ("RTL", "SAL", etc.)
+     */
+    public BuildingResponse getBuildingByCode(String buildingCode) {
+        Building building = buildingRepository.findByBuildingCode(buildingCode)
+                .orElseThrow(() -> new RuntimeException("Building not found: " + buildingCode));
+
+        return toResponse(building);
+    }
+
+    /**
+     * Convert Entity → Response DTO
+     */
+    private BuildingResponse toResponse(Building b) {
         return BuildingResponse.builder()
-                .id(building.getId())
-                .buildingCode(building.getBuildingCode())
-                .buildingName(building.getBuildingName())
-                .buildingIsActive(building.isBuildingIsActive())
-                .buildingImageUrl(building.getBuildingImageUrl())
+                .id(b.getId())
+                .buildingCode(b.getBuildingCode())
+                .buildingName(b.getBuildingName())
+                .buildingIsActive(b.isBuildingIsActive())
+                .buildingImageUrl(b.getBuildingImageUrl())
                 .build();
     }
-
-    public List<BuildingResponse> getActiveBuildings() {
-        return buildingRepository.findAllByBuildingIsActiveTrue().stream().map(
-                b -> BuildingResponse.builder()
-                        .id(b.getId())
-                        .buildingCode(b.getBuildingCode())
-                        .buildingName(b.getBuildingName())
-                        .buildingIsActive(b.isBuildingIsActive())
-                        .buildingImageUrl(b.getBuildingImageUrl())
-                        .build()
-        ).collect(Collectors.toList());
-    }
-
-    // Add update, deactivate, etc., as needed
 }

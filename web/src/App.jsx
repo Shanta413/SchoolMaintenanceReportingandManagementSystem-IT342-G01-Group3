@@ -7,6 +7,8 @@ import AdminDashboard from "./pages/staff/AdminDashboard";
 import Dashboard from "./pages/staff/Dashboard";
 import Issues from "./pages/staff/Issues";
 import Users from "./pages/staff/Users";
+import BuildingDetail from "./pages/BuildingDetail";
+import ReportIssue from "./pages/ReportIssue";
 import "./App.css";
 
 /**
@@ -56,6 +58,26 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Building detail (for students/staff) */}
+        <Route
+          path="/buildings/:buildingCode"
+          element={
+            <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
+              <BuildingDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Report Issue Page */}
+        <Route
+          path="/buildings/ReportIssue"
+          element={
+            <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
+              <ReportIssue />
             </ProtectedRoute>
           }
         />

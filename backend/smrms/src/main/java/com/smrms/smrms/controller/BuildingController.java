@@ -13,12 +13,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/buildings")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "http://localhost:5173") // Adjust as needed for prod
 public class BuildingController {
 
     private final BuildingService buildingService;
 
-    // Create a building (Admin)
+    // === Create building (Admin) ===
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> createBuilding(
             @RequestPart("data") BuildingCreateRequest request,
@@ -32,9 +32,20 @@ public class BuildingController {
         }
     }
 
-    // Get all active buildings
+    // === Get all active buildings ===
     @GetMapping
     public ResponseEntity<List<BuildingResponse>> getActiveBuildings() {
         return ResponseEntity.ok(buildingService.getActiveBuildings());
+    }
+
+    // === Get a building by buildingCode (e.g., /api/buildings/code/RTL) ===
+    @GetMapping("/code/{buildingCode}")
+    public ResponseEntity<BuildingResponse> getBuildingByCode(@PathVariable String buildingCode) {
+        try {
+            BuildingResponse response = buildingService.getBuildingByCode(buildingCode);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
