@@ -2,51 +2,65 @@ package com.smrms.smrms.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.GenericGenerator;
-
 import java.time.Instant;
 
 @Entity
-@Table(name = "issue")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Issue {
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    // User who reported the issue
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_by_id")
     private User reportedBy;
 
-    // Maintenance Staff who resolved it (nullable)
-    @ManyToOne
-    @JoinColumn(name = "resolved_by", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resolved_by_id")
     private User resolvedBy;
 
-    // Building relationship
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id")
     private Building building;
 
+    @Column(nullable = false)
     private String issueTitle;
+
+    @Column(length = 1024)
     private String issueDescription;
+
+    @Column(length = 255)
     private String issueLocation;
 
-    @Enumerated(EnumType.STRING)
-    private IssuePriority issuePriority; // LOW, MEDIUM, HIGH
+    @Column(length = 255)
+    private String exactLocation; // still keep this if needed
 
     @Enumerated(EnumType.STRING)
-    private IssueStatus issueStatus;     // ACTIVE, FIXED
+    @Column(nullable = false)
+    private IssuePriority issuePriority; // HIGH, MEDIUM, LOW
 
-    private String issuePhotoUrl;   // optional
-    private String issueReportFile; // optional PDF/DOC
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private IssueStatus issueStatus; // ACTIVE, RESOLVED
 
     private Instant issueCreatedAt;
     private Instant issueCompletedAt;
 
-    private boolean issueIsActive;
+    @Column(nullable = false)
+    private Boolean issueIsActive = true;
+
+    @Column(length = 512)
+    private String issuePhotoUrl;
+
+    @Column(length = 512)
+    private String issueReportFile;
+
+    // ====== resolutionNote REMOVED! ======
+
+    // Add other fields as needed...
 }

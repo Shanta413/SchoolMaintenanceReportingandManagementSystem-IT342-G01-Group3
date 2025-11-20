@@ -13,6 +13,7 @@ public class IssueResponse {
     private String issueTitle;
     private String issueDescription;
     private String issueLocation;
+    private String exactLocation; // add this if needed by frontend
     private String issuePriority;
     private String issueStatus;
 
@@ -33,4 +34,6 @@ public class IssueResponse {
 
     private Instant issueCreatedAt;
     private Instant issueCompletedAt;
+
+    // REMOVED: resolutionNote/resolutionNotes
 }

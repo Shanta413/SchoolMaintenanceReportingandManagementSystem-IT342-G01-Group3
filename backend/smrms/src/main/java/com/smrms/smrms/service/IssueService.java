@@ -26,14 +26,11 @@ public class IssueService {
             MultipartFile reportFile
     ) throws Exception {
 
-        // Debug: Print buildingId received
-        System.out.println("Building ID received: " + req.getBuildingId());
-
         // Find user by email
         User reporter = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Find building by ID (String type)
+        // Find building by ID
         Building building = buildingRepository.findById(req.getBuildingId())
                 .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingId()));
 
@@ -56,6 +53,7 @@ public class IssueService {
                 .issueTitle(req.getIssueTitle())
                 .issueDescription(req.getIssueDescription())
                 .issueLocation(req.getIssueLocation())
+                .exactLocation(req.getExactLocation())
                 .issuePriority(IssuePriority.valueOf(req.getIssuePriority().toUpperCase()))
                 .issueStatus(IssueStatus.ACTIVE)
                 .issueCreatedAt(Instant.now())
@@ -93,6 +91,89 @@ public class IssueService {
         return mapToResponse(issue);
     }
 
+    public IssueResponse updateIssue(
+            String id,
+            IssueUpdateRequest req,
+            String editorEmail,
+            MultipartFile reportFile
+    ) throws Exception {
+
+        System.out.println("==== UPDATE ISSUE DEBUG ====");
+        System.out.println("IssueID: " + id);
+        System.out.println("Received Title: " + req.getIssueTitle());
+        System.out.println("Received Status: " + req.getIssueStatus());
+        System.out.println("ResolvedByStaffId from frontend: " + req.getResolvedByStaffId());
+        System.out.println("============================");
+
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
+
+        // Update basic fields
+        if (req.getIssueTitle() != null)
+            issue.setIssueTitle(req.getIssueTitle());
+
+        if (req.getIssueDescription() != null)
+            issue.setIssueDescription(req.getIssueDescription());
+
+        if (req.getIssueLocation() != null)
+            issue.setIssueLocation(req.getIssueLocation());
+
+        if (req.getExactLocation() != null)
+            issue.setExactLocation(req.getExactLocation());
+
+        if (req.getIssuePriority() != null)
+            issue.setIssuePriority(IssuePriority.valueOf(req.getIssuePriority().toUpperCase()));
+
+        if (req.getIssueStatus() != null)
+            issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
+
+        // ============================
+        // RESOLVER (staff/technician)
+        // ============================
+        if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
+
+            System.out.println("Looking up resolver user ID: " + req.getResolvedByStaffId());
+
+            User resolver = userRepository.findById(req.getResolvedByStaffId())
+                    .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
+
+            issue.setResolvedBy(resolver);
+
+            // mark as completed if status = resolved
+            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
+                issue.setIssueCompletedAt(Instant.now());
+            }
+
+        } else {
+            // No staff selected
+            System.out.println("No resolver selected.");
+
+            // If status is not RESOLVED, remove resolver + completion time
+            if (!"RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
+                issue.setResolvedBy(null);
+                issue.setIssueCompletedAt(null);
+            }
+        }
+
+        // ============================
+        // FILE UPLOAD
+        // ============================
+        if (reportFile != null && !reportFile.isEmpty()) {
+            String reportUrl = storage.upload(reportFile);
+            issue.setIssueReportFile(reportUrl);
+        }
+
+        issueRepository.save(issue);
+
+        return mapToResponse(issue);
+    }
+
+    public void deleteIssue(String id) {
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
+        issueRepository.delete(issue);
+    }
+
     // Converts Issue entity to IssueSummaryDTO for summary responses
     private IssueSummaryDTO mapToSummary(Issue i) {
         return IssueSummaryDTO.builder()
@@ -104,7 +185,7 @@ public class IssueService {
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
-                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null) // <-- this!
+                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
                 .build();
     }
 
@@ -115,6 +196,7 @@ public class IssueService {
                 .issueTitle(i.getIssueTitle())
                 .issueDescription(i.getIssueDescription())
                 .issueLocation(i.getIssueLocation())
+                .exactLocation(i.getExactLocation())
                 .issuePriority(i.getIssuePriority().name())
                 .issueStatus(i.getIssueStatus().name())
                 .issuePhotoUrl(i.getIssuePhotoUrl())

@@ -21,13 +21,14 @@ export async function getIssueById(issueId) {
 }
 
 // Create new issue (with optional image upload)
-export async function createIssue(issueData, photoFile = null) {
+export async function createIssue(issueData, photoFile = null, reportFile = null) {
   const formData = new FormData();
   formData.append(
     "data",
     new Blob([JSON.stringify(issueData)], { type: "application/json" })
   );
   if (photoFile) formData.append("photo", photoFile);
+  if (reportFile) formData.append("file", reportFile);
 
   const { data } = await api.post("/issues", formData, {
     headers: { "Content-Type": "multipart/form-data" }
@@ -35,9 +36,18 @@ export async function createIssue(issueData, photoFile = null) {
   return data;
 }
 
-// Update issue (optional, not used in student flow)
-export async function updateIssue(issueId, updateData) {
-  const { data } = await api.put(`/issues/${issueId}`, updateData);
+// Update issue (with optional resolution report file)
+export async function updateIssue(issueId, updateData, resolutionFile = null) {
+  const formData = new FormData();
+  formData.append(
+    "data",
+    new Blob([JSON.stringify(updateData)], { type: "application/json" })
+  );
+  if (resolutionFile) formData.append("file", resolutionFile);
+
+  const { data } = await api.put(`/issues/${issueId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
   return data;
 }
 

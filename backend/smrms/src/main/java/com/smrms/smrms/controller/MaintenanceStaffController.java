@@ -39,9 +39,16 @@ public class MaintenanceStaffController {
         return staffRepo.findById(id)
                 .map(ms -> {
                     User u = ms.getUser();
-                    return ResponseEntity.ok(new MaintenanceStaffViewDTO(
-                            ms.getId(), u.getFullname(), u.getEmail(), u.getMobileNumber(), ms.getStaffId()
-                    ));
+                    return ResponseEntity.ok(
+                            new MaintenanceStaffViewDTO(
+                                    ms.getId(),           // maintenance staff row ID
+                                    u.getId(),            // userId (REQUIRED NOW)
+                                    u.getFullname(),
+                                    u.getEmail(),
+                                    u.getMobileNumber(),
+                                    ms.getStaffId()
+                            )
+                    );
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

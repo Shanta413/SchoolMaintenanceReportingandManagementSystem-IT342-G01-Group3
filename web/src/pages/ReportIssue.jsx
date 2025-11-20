@@ -4,30 +4,29 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { createIssue } from "../api/issues";
 import { getAllBuildings } from "../api/building";
 import Header from "../components/Header";
-import "../css/AuthPage.css"; // for form, buttons, toast
-import "../css/ReportIssue.css"; // (if any)
+import { Upload, CheckCircle } from "lucide-react";
+import "../css/AuthPage.css";
+import "../css/ReportIssue.css";
 
 function ReportIssue() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Accept buildingId from previous page (if any)
-  const buildingFromState = location.state?.buildingId || "";
+  const buildingFromState = location.state?.buildingCode || "";
 
-  // Form state
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("");
   const [description, setDescription] = useState("");
-  const [building, setBuilding] = useState(buildingFromState); // This will be buildingId (UUID)
+  const [buildingCode, setBuildingCode] = useState(buildingFromState);
   const [locationText, setLocationText] = useState("");
   const [photo, setPhoto] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: "", message: "" });
 
-  // Fetch all buildings for dropdown
   useEffect(() => {
     setLoading(true);
     getAllBuildings()
@@ -36,33 +35,57 @@ function ReportIssue() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Toast helper
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast({ type: "", message: "" }), 2500);
   };
 
-  // Handle file input
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return setPhoto(null);
+  const validateFile = (file) => {
+    if (!file) return null;
 
     if (!["image/png", "image/jpeg", "image/gif"].includes(file.type)) {
       showToast("error", "Only PNG, JPG, GIF allowed.");
-      return;
+      return null;
     }
     if (file.size > 5 * 1024 * 1024) {
       showToast("error", "Max file size is 5MB.");
-      return;
+      return null;
     }
-    setPhoto(file);
+    return file;
   };
 
-  // Handle form submit
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    const validFile = validateFile(file);
+    setPhoto(validFile);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const validFile = validateFile(file);
+      setPhoto(validFile);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!title || !priority || !description || !building || !locationText) {
+    
+    if (!title || !priority || !description || !buildingCode || !locationText) {
       showToast("error", "Please fill all required fields.");
       return;
     }
@@ -70,23 +93,33 @@ function ReportIssue() {
       showToast("error", "Description too long.");
       return;
     }
+    
     setSubmitting(true);
+
+    const selectedBuilding = buildings.find(
+      (b) => b.buildingCode === buildingCode
+    );
+    if (!selectedBuilding) {
+      showToast("error", "Building not found.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await createIssue(
         {
           issueTitle: title,
-          issuePriority: priority,
           issueDescription: description,
           issueLocation: locationText,
-          buildingId: building, // SENDS THE UUID!
+          issuePriority: priority,
+          buildingId: selectedBuilding.id,
         },
         photo
       );
       showToast("success", "Issue reported successfully!");
       setTimeout(() => {
-        // Go back to the selected building detail page
-        navigate(`/buildings/${building}`);
-      }, 1200);
+        navigate(`/buildings/${buildingCode}`);
+      }, 1100);
     } catch (err) {
       showToast("error", "Failed to submit. Try again.");
     } finally {
@@ -94,10 +127,9 @@ function ReportIssue() {
     }
   };
 
-  // Cancel button
   const handleCancel = () => {
-    if (building) {
-      navigate(`/buildings/${building}`);
+    if (buildingCode) {
+      navigate(`/buildings/${buildingCode}`);
     } else {
       navigate("/buildings");
     }
@@ -108,17 +140,19 @@ function ReportIssue() {
       <Header />
       <div className="auth-container">
         <div className="auth-card-wrapper">
-          <div className="auth-card" style={{ maxWidth: 600 }}>
-            <div className="auth-header">
+          <div className="report-card">
+            <div className="report-header">
               <h2>Report New Issue</h2>
-              <div className="auth-subtitle">
+              <p className="report-subtitle">
                 Fill out the form below to submit a maintenance issue
-              </div>
+              </p>
             </div>
-            <form className="auth-form" onSubmit={handleSubmit} noValidate>
+
+            <div className="report-form-container" onSubmit={handleSubmit}>
+              {/* Issue Title */}
               <div className="form-group">
                 <label className="form-label">
-                  Issue Title <span style={{ color: "#dc2626" }}>*</span>
+                  Issue Title <span className="required">*</span>
                 </label>
                 <input
                   className="form-input"
@@ -129,12 +163,14 @@ function ReportIssue() {
                   required
                 />
               </div>
+
+              {/* Priority */}
               <div className="form-group">
                 <label className="form-label">
-                  Priority <span style={{ color: "#dc2626" }}>*</span>
+                  Priority <span className="required">*</span>
                 </label>
                 <select
-                  className="form-input"
+                  className="form-input form-select"
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
                   required
@@ -145,85 +181,121 @@ function ReportIssue() {
                   <option value="LOW">Low</option>
                 </select>
               </div>
+
+              {/* Description */}
               <div className="form-group">
                 <label className="form-label">
-                  Describe the Issue <span style={{ color: "#dc2626" }}>*</span>
+                  Describe the Issue <span className="required">*</span>
                 </label>
                 <textarea
-                  className="form-input"
+                  className="form-input form-textarea"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Provide detailed description of the issue..."
                   maxLength={500}
                   required
                   rows={4}
-                  style={{ resize: "vertical" }}
                 />
-                <div
-                  style={{
-                    textAlign: "right",
-                    fontSize: 12,
-                    color: description.length > 500 ? "#dc2626" : "#6b7280",
-                  }}
-                >
-                  {description.length}/500
+                <div className="char-count">
+                  Maximum 500 characters
+                  <span className={description.length > 500 ? "over-limit" : ""}>
+                    {description.length}/500
+                  </span>
                 </div>
               </div>
-              <div className="form-grid">
-                <div className="form-column">
-                  <div className="form-group">
-                    <label className="form-label">
-                      Building <span style={{ color: "#dc2626" }}>*</span>
-                    </label>
-                    <select
-                      className="form-input"
-                      value={building}
-                      onChange={(e) => setBuilding(e.target.value)}
-                      required
-                    >
-                      <option value="">Select building</option>
-                      {buildings.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.buildingName} ({b.buildingCode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+
+              {/* Building and Location Row */}
+              <div className="form-row-split">
+                <div className="form-group">
+                  <label className="form-label">
+                    Building <span className="required">*</span>
+                  </label>
+                  <select
+                    className="form-input form-select"
+                    value={buildingCode}
+                    onChange={(e) => setBuildingCode(e.target.value)}
+                    required
+                  >
+                    <option value="">Select building</option>
+                    {buildings.map((b) => (
+                      <option key={b.buildingCode} value={b.buildingCode}>
+                        {b.buildingName} ({b.buildingCode})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="form-column">
-                  <div className="form-group">
-                    <label className="form-label">
-                      Exact Location <span style={{ color: "#dc2626" }}>*</span>
-                    </label>
-                    <input
-                      className="form-input"
-                      value={locationText}
-                      onChange={(e) => setLocationText(e.target.value)}
-                      maxLength={100}
-                      placeholder="e.g., Room 301, 3rd Floor"
-                      required
-                    />
-                  </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Exact Location <span className="required">*</span>
+                  </label>
+                  <input
+                    className="form-input"
+                    value={locationText}
+                    onChange={(e) => setLocationText(e.target.value)}
+                    maxLength={100}
+                    placeholder="e.g., Room 301, 3rd Floor"
+                    required
+                  />
                 </div>
               </div>
+
+              {/* File Upload */}
               <div className="form-group">
                 <label className="form-label">Add Image (Optional)</label>
-                <input
-                  className="form-input"
-                  type="file"
-                  accept="image/png,image/jpeg,image/gif"
-                  onChange={handlePhotoChange}
-                />
-                {photo && (
-                  <div style={{ marginTop: 8, fontSize: 12 }}>
-                    Selected: {photo.name}
-                  </div>
-                )}
+                <div
+                  className={`file-upload-area ${dragActive ? "drag-active" : ""} ${
+                    photo ? "has-file" : ""
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById("file-input").click()}
+                >
+                  {!photo ? (
+                    <>
+                      <div className="file-upload-icon">
+                        <Upload size={24} />
+                      </div>
+                      <div className="file-upload-text">
+                        <span className="highlight">Click to upload</span> or drag and drop
+                      </div>
+                      <div className="file-upload-hint">
+                        PNG, JPG, GIF up to 5MB
+                      </div>
+                    </>
+                  ) : (
+                    <div className="selected-file">
+                      <CheckCircle size={20} className="selected-file-icon" />
+                      <span>{photo.name}</span>
+                      <button
+                        type="button"
+                        className="remove-file-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhoto(null);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif"
+                    onChange={handlePhotoChange}
+                    style={{ display: "none" }}
+                  />
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
+
+              {/* Action Buttons */}
+              <div className="form-actions">
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className="btn btn-cancel"
                   onClick={handleCancel}
                   disabled={submitting}
                 >
@@ -231,20 +303,22 @@ function ReportIssue() {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn btn-submit"
+                  onClick={handleSubmit}
                   disabled={submitting}
-                  style={{ minWidth: 120 }}
                 >
                   {submitting ? "Submitting..." : "Submit Issue"}
                 </button>
               </div>
-            </form>
-            {toast.message && (
-              <div className={`toast ${toast.type}`}>{toast.message}</div>
-            )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast.message && (
+        <div className={`toast toast-${toast.type}`}>{toast.message}</div>
+      )}
     </div>
   );
 }

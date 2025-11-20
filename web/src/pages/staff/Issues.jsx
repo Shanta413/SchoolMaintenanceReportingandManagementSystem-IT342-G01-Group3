@@ -35,9 +35,8 @@ function Issues() {
   };
 
   const handleBuildingClick = (building) => {
-    // Navigate to building detail page or issues for that building
-    navigate(`/staff/issues/${building.id}`);
-  };
+  navigate(`/staff/buildings/${building.buildingCode}`);
+};
 
   const getTotalIssues = (building) => {
     // If your API returns issue counts, calculate total

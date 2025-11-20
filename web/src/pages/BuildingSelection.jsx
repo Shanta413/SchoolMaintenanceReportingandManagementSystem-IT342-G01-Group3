@@ -135,16 +135,17 @@ function BuildingSelection() {
               ) : (
                 filteredBuildings.map((b) => (
                   <BuildingCard
-                    key={b.id}
-                    building={{
-                      id: b.id,
-                      name: b.buildingName,
-                      subtitle: b.buildingCode,
-                      image: b.buildingImageUrl, // from backend
-                      issues: b.issueCount || { high: 0, medium: 0, low: 0 }, // adapt if needed
-                    }}
-                    onClick={() => handleBuildingClick(b)}
-                  />
+  key={b.id}
+  building={{
+    id: b.id,
+    name: b.buildingName,      // <-- This is name (smaller, below)
+    subtitle: b.buildingCode,  // <-- This is CODE (should be on top, bigger)
+    image: b.buildingImageUrl,
+    issues: b.issueCount || { high: 0, medium: 0, low: 0 },
+  }}
+  onClick={() => handleBuildingClick(b)}
+/>
+
                 ))
               )}
             </div>

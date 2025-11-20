@@ -1,24 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Calendar } from "lucide-react";
-import { getBuildingByCode } from "../api/building";
-import { getIssuesByBuilding } from "../api/issues";
-import Header from "../components/Header";
-import "../css/BuildingDetails.css";
+import { ArrowLeft, Search, User, Calendar, Edit, Trash2, ClipboardCheck } from "lucide-react";
+import { getBuildingByCode } from "../../api/building";
+import { getIssuesByBuilding, updateIssue, deleteIssue } from "../../api/issues";
+import IssueResolutionModal from '../../components/staff/IssueResolutionModal';
+import "../../css/BuildingDetails.css";
 
-export default function BuildingDetail() {
+export default function AdminBuildingDetail() {
   const { buildingCode } = useParams();
   const navigate = useNavigate();
 
   const [building, setBuilding] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [activeTab, setActiveTab] = useState('active');
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+
+  // --- Modal state
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // Helper to check if issue is resolved
+  const isResolved = (status) => status === 'FIXED' || status === 'RESOLVED';
 
   // Fetch building data
   useEffect(() => {
@@ -56,13 +62,10 @@ export default function BuildingDetail() {
     }
   };
 
-  // Treat "FIXED" as resolved as well
-  const isResolvedStatus = status => ['RESOLVED', 'FIXED'].includes((status || '').toUpperCase());
-
-  // Filtering logic
+  // Filtering logic (robust: works with "FIXED" and "RESOLVED")
   const filteredIssues = issues.filter(issue => {
-    const isActive = !isResolvedStatus(issue.issueStatus);
-    const matchesTab = activeTab === 'active' ? isActive : !isActive;
+    const issueIsResolved = isResolved(issue.issueStatus);
+    const matchesTab = activeTab === 'active' ? !issueIsResolved : issueIsResolved;
     const matchesPriority = selectedPriority === 'all' ||
       (issue.issuePriority?.toLowerCase() === selectedPriority);
     const matchesSearch =
@@ -71,11 +74,42 @@ export default function BuildingDetail() {
     return matchesTab && matchesPriority && matchesSearch;
   });
 
-  const activeIssuesCount = issues.filter(i => !isResolvedStatus(i.issueStatus)).length;
-  const resolvedIssuesCount = issues.filter(i => isResolvedStatus(i.issueStatus)).length;
-  const highCount = issues.filter(i => i.issuePriority === 'HIGH' && !isResolvedStatus(i.issueStatus)).length;
-  const mediumCount = issues.filter(i => i.issuePriority === 'MEDIUM' && !isResolvedStatus(i.issueStatus)).length;
-  const lowCount = issues.filter(i => i.issuePriority === 'LOW' && !isResolvedStatus(i.issueStatus)).length;
+  const activeIssuesCount = issues.filter(i => !isResolved(i.issueStatus)).length;
+  const resolvedIssuesCount = issues.filter(i => isResolved(i.issueStatus)).length;
+  const highCount = issues.filter(i => i.issuePriority === 'HIGH' && !isResolved(i.issueStatus)).length;
+  const mediumCount = issues.filter(i => i.issuePriority === 'MEDIUM' && !isResolved(i.issueStatus)).length;
+  const lowCount = issues.filter(i => i.issuePriority === 'LOW' && !isResolved(i.issueStatus)).length;
+
+  // ---- Edit/Resolve
+  const handleEdit = (issue) => {
+    setSelectedIssue(issue);
+    setShowModal(true);
+  };
+
+  const handleDelete = async (issueId) => {
+    if (window.confirm("Are you sure you want to delete this issue?")) {
+      await deleteIssue(issueId);
+      setIssues((prev) => prev.filter((i) => i.id !== issueId));
+    }
+  };
+
+  // Only pass fields to update, always send the issue ID
+  const handleModalSave = async (updateFields) => {
+    if (!selectedIssue?.id) {
+      alert("Could not update: Issue ID missing!");
+      return;
+    }
+    await updateIssue(selectedIssue.id, { ...selectedIssue, ...updateFields });
+    setShowModal(false);
+    setSelectedIssue(null);
+    // Refresh issues
+    getIssuesByBuilding(building.id).then(setIssues);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setSelectedIssue(null);
+  };
 
   if (loading) {
     return (
@@ -89,11 +123,11 @@ export default function BuildingDetail() {
     return (
       <div className="error-container">
         <button
-          onClick={() => navigate("/buildings")}
+          onClick={() => navigate("/staff/issues")}
           className="back-button-simple"
         >
           <ArrowLeft size={18} />
-          Back to Buildings
+          Back to Issues
         </button>
         <div className="error-text">{error}</div>
       </div>
@@ -102,37 +136,22 @@ export default function BuildingDetail() {
 
   return (
     <div className="building-detail-page">
-      <Header userName="Student" />
-
+      {/* No <Header /> here for staff! Only sidebar from layout */}
       {/* Purple Header Banner */}
       <div className="building-header-banner">
         <div className="building-header-content">
           <div className="building-header-left">
             <button
-              onClick={() => navigate("/buildings")}
+              onClick={() => navigate("/staff/issues")}
               className="back-button-banner"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="building-title">
-                {building?.buildingName}
-              </h1>
-              <p className="building-subtitle">
-                {building?.buildingCode}
-              </p>
+              <h1 className="building-title">{building?.buildingCode}</h1>
+              <p className="building-subtitle">{building?.buildingName}</p>
             </div>
           </div>
-          <button 
-            className="report-issue-button"
-            onClick={() =>
-              navigate('/buildings/ReportIssue', {
-                state: { buildingId: building.id }
-              })
-            }
-          >
-            + Report Issue
-          </button>
         </div>
       </div>
 
@@ -215,7 +234,6 @@ export default function BuildingDetail() {
                   key={issue.id}
                   className="issue-card"
                   style={{ borderLeftColor: priorityColors.border }}
-                  onClick={() => navigate(`/issues/${issue.id}`)}
                 >
                   <div className="issue-card-content">
                     <div className="issue-main">
@@ -229,6 +247,30 @@ export default function BuildingDetail() {
                           }}
                         >
                           {issue.issuePriority}
+                        </span>
+                        {/* Edit/Delete/Resolve icons */}
+                        <span style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
+                          <Edit
+                            size={18}
+                            className="icon-action"
+                            title="Edit Issue"
+                            onClick={() => handleEdit(issue)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <ClipboardCheck
+                            size={18}
+                            className="icon-action"
+                            title="Resolve Issue"
+                            onClick={() => handleEdit(issue)}
+                            style={{ cursor: "pointer" }}
+                          />
+                          <Trash2
+                            size={18}
+                            className="icon-action"
+                            title="Delete Issue"
+                            onClick={() => handleDelete(issue.id)}
+                            style={{ cursor: "pointer", color: "#dc2626" }}
+                          />
                         </span>
                       </div>
                       {/* --- Reporter only row --- */}
@@ -257,6 +299,14 @@ export default function BuildingDetail() {
           )}
         </div>
       </main>
+      {/* --- Issue Resolution/Edit Modal --- */}
+      <IssueResolutionModal
+        isOpen={showModal}
+        issue={selectedIssue}
+        onSave={handleModalSave}
+        onClose={handleModalClose}
+        buttonLabel="Submit"      // Pass buttonLabel prop to modal
+      />
     </div>
   );
 }

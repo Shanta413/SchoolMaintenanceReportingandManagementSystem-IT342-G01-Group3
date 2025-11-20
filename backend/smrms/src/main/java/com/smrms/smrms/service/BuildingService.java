@@ -2,8 +2,12 @@ package com.smrms.smrms.service;
 
 import com.smrms.smrms.dto.BuildingCreateRequest;
 import com.smrms.smrms.dto.BuildingResponse;
+import com.smrms.smrms.dto.BuildingSummaryDTO;
+import com.smrms.smrms.dto.IssueCountDTO;
 import com.smrms.smrms.entity.Building;
+import com.smrms.smrms.entity.IssuePriority;
 import com.smrms.smrms.repository.BuildingRepository;
+import com.smrms.smrms.repository.IssueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,13 +21,13 @@ import java.util.stream.Collectors;
 public class BuildingService {
 
     private final BuildingRepository buildingRepository;
+    private final IssueRepository issueRepository;
     private final SupabaseStorageService supabaseStorageService;
 
     /**
      * Create new building
      */
     public BuildingResponse createBuilding(BuildingCreateRequest request, MultipartFile file) throws Exception {
-
         // uniqueness checks
         if (buildingRepository.existsByBuildingCode(request.getBuildingCode())) {
             throw new RuntimeException("Building code already exists");
@@ -70,6 +74,33 @@ public class BuildingService {
                 .orElseThrow(() -> new RuntimeException("Building not found: " + buildingCode));
 
         return toResponse(building);
+    }
+
+    /**
+     * NEW — Get all buildings with issue counts!
+     */
+    public List<BuildingSummaryDTO> getAllBuildingsWithIssueCount() {
+        List<Building> buildings = buildingRepository.findAll();
+        return buildings.stream().map(b -> {
+            long high = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.HIGH);
+            long medium = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.MEDIUM);
+            long low = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.LOW);
+
+            return BuildingSummaryDTO.builder()
+                    .id(b.getId())
+                    .buildingCode(b.getBuildingCode())
+                    .buildingName(b.getBuildingName())
+                    .buildingIsActive(b.isBuildingIsActive())
+                    .buildingImageUrl(b.getBuildingImageUrl())
+                    .issueCount(
+                            IssueCountDTO.builder()
+                                    .high(high)
+                                    .medium(medium)
+                                    .low(low)
+                                    .build()
+                    )
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     /**
