@@ -25,16 +25,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * ✅ Register a new LOCAL user (default: STUDENT)
+     * REGISTER LOCAL USER
      */
     public AuthResponse register(RegisterRequest request) {
 
-        // 🔍 Check if email already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already exists");
         }
 
-        // 🆕 Create a new user
         User user = User.builder()
                 .fullname(request.getFullname())
                 .email(request.getEmail())
@@ -47,7 +45,6 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 🎓 Assign default STUDENT role
         Role studentRole = roleRepository.findByRoleName("STUDENT")
                 .orElseGet(() -> roleRepository.save(
                         Role.builder()
@@ -56,7 +53,6 @@ public class AuthService {
                                 .build()
                 ));
 
-        // 🧩 Link user to STUDENT role
         UserRole userRole = UserRole.builder()
                 .user(user)
                 .role(studentRole)
@@ -64,7 +60,6 @@ public class AuthService {
                 .build();
         userRoleRepository.save(userRole);
 
-        // 🧍 Create student profile
         Student student = Student.builder()
                 .user(user)
                 .studentDepartment(request.getStudentDepartment())
@@ -72,7 +67,6 @@ public class AuthService {
                 .build();
         studentRepository.save(student);
 
-        // 🔑 Generate JWT
         String jwtToken = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
@@ -84,28 +78,30 @@ public class AuthService {
     }
 
     /**
-     * ✅ Login an existing LOCAL user (handles both ADMIN & STUDENT)
+     * LOGIN LOCAL USER
+     * (Google accounts blocked here)
      */
     public AuthResponse login(LoginRequest request) {
-        // 1️⃣ Find user
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-        // 2️⃣ Verify password (only for LOCAL accounts)
-        if ("LOCAL".equals(user.getAuthMethod()) &&
-                !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        // ⛔ BLOCK GOOGLE ACCOUNTS FROM PASSWORD LOGIN
+        if ("GOOGLE".equalsIgnoreCase(user.getAuthMethod())) {
+            throw new RuntimeException("This account uses Google Sign‑In. Please login with Google.");
+        }
+
+        // LOCAL accounts → check password
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid email or password");
         }
 
-        // 3️⃣ Get user's role (ADMIN, STUDENT, etc.)
         String roleName = userRoleRepository.findByUser(user)
                 .map(userRole -> userRole.getRole().getRoleName())
-                .orElse("STUDENT"); // default fallback
+                .orElse("STUDENT");
 
-        // 4️⃣ Generate JWT
         String jwtToken = jwtService.generateToken(user.getEmail());
 
-        // 5️⃣ Return success
         return AuthResponse.builder()
                 .token(jwtToken)
                 .email(user.getEmail())

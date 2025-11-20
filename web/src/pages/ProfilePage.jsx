@@ -298,8 +298,6 @@ const ProfilePage = () => {
 
           <div>
             <h2>{formData.fullname}</h2>
-            <p>{formData.studentDepartment}</p>
-            <p className="email">{formData.email}</p>
           </div>
         </div>
       </div>
