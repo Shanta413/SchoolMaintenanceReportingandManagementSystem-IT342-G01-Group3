@@ -202,6 +202,7 @@ const ProfilePage = () => {
         mobileNumber,
         studentDepartment,
         studentIdNumber,
+        authMethod,
       } = formData;
       const payload = {
         fullname,
@@ -209,7 +210,13 @@ const ProfilePage = () => {
         studentDepartment,
         studentIdNumber,
       };
-      if (password && password.trim().length > 0) payload.password = password;
+      if (
+        password &&
+        password.trim().length > 0 &&
+        authMethod !== "GOOGLE"
+      ) {
+        payload.password = password;
+      }
 
       await axios.put(`${API_BASE}/user/profile`, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -396,6 +403,7 @@ const ProfilePage = () => {
               </div>
             </div>
 
+            {/* Password change — disabled for Google users */}
             <div className="form-group full-width">
               <label>New Password</label>
               <input
@@ -404,10 +412,12 @@ const ProfilePage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Enter new password"
+                disabled={formData.authMethod === "GOOGLE"}
+                style={formData.authMethod === "GOOGLE" ? { background: "#f3f4f6", cursor: "not-allowed" } : {}}
               />
               {formData.authMethod === "GOOGLE" && (
                 <small className="hint">
-                  Password changes are ignored for Google accounts.
+                  Password changes are <b>disabled</b> for Google accounts.
                 </small>
               )}
             </div>
