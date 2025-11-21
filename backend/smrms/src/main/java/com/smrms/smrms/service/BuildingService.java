@@ -28,7 +28,7 @@ public class BuildingService {
      * Create new building
      */
     public BuildingResponse createBuilding(BuildingCreateRequest request, MultipartFile file) throws Exception {
-        // uniqueness checks
+        // Uniqueness checks
         if (buildingRepository.existsByBuildingCode(request.getBuildingCode())) {
             throw new RuntimeException("Building code already exists");
         }
@@ -42,13 +42,16 @@ public class BuildingService {
             imageUrl = supabaseStorageService.upload(file);
         }
 
+        // Set timestamps
+        LocalDateTime now = LocalDateTime.now();
+
         Building building = Building.builder()
                 .buildingCode(request.getBuildingCode())
                 .buildingName(request.getBuildingName())
                 .buildingIsActive(true)
                 .buildingImageUrl(imageUrl)
-                .buildingCreatedAt(LocalDateTime.now())
-                .buildingUpdatedAt(LocalDateTime.now())
+                .buildingCreatedAt(now)
+                .buildingUpdatedAt(now)
                 .build();
 
         building = buildingRepository.save(building);
@@ -67,7 +70,7 @@ public class BuildingService {
     }
 
     /**
-     * NEW — get building by code ("RTL", "SAL", etc.)
+     * Get building by code ("RTL", "SAL", etc.)
      */
     public BuildingResponse getBuildingByCode(String buildingCode) {
         Building building = buildingRepository.findByBuildingCode(buildingCode)
@@ -77,7 +80,7 @@ public class BuildingService {
     }
 
     /**
-     * NEW — Get all buildings with issue counts!
+     * Get all buildings with issue counts!
      */
     public List<BuildingSummaryDTO> getAllBuildingsWithIssueCount() {
         List<Building> buildings = buildingRepository.findAll();
@@ -86,19 +89,19 @@ public class BuildingService {
             long medium = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.MEDIUM);
             long low = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.LOW);
 
+            IssueCountDTO issueCount = IssueCountDTO.builder()
+                    .high(high)
+                    .medium(medium)
+                    .low(low)
+                    .build();
+
             return BuildingSummaryDTO.builder()
                     .id(b.getId())
                     .buildingCode(b.getBuildingCode())
                     .buildingName(b.getBuildingName())
                     .buildingIsActive(b.isBuildingIsActive())
                     .buildingImageUrl(b.getBuildingImageUrl())
-                    .issueCount(
-                            IssueCountDTO.builder()
-                                    .high(high)
-                                    .medium(medium)
-                                    .low(low)
-                                    .build()
-                    )
+                    .issueCount(issueCount)
                     .build();
         }).collect(Collectors.toList());
     }

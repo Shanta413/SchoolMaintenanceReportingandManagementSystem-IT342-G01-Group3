@@ -19,8 +19,13 @@ public class BuildingController {
 
     @PostMapping
     public BuildingResponse createBuilding(
-            @ModelAttribute BuildingCreateRequest request,
-            @RequestPart(value = "file", required = false) MultipartFile file) throws Exception {
+            @RequestParam("buildingCode") String buildingCode,
+            @RequestParam("buildingName") String buildingName,
+            @RequestPart(value = "file", required = false) MultipartFile file
+    ) throws Exception {
+        BuildingCreateRequest request = new BuildingCreateRequest();
+        request.setBuildingCode(buildingCode);
+        request.setBuildingName(buildingName);
         return buildingService.createBuilding(request, file);
     }
 
