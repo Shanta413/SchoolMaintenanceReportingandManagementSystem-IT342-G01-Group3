@@ -186,6 +186,9 @@ export function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a password"
                 className="form-input"
+                minLength={8}
+                pattern="^(?=.*[0-9]).{8,}$"
+                title="Password must be at least 8 characters and contain at least one number"
                 required
               />
             </div>
