@@ -9,7 +9,16 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // ✅ Toast notification
+  const [toast, setToast] = useState({ show: false, message: "", type: "" });
+  
   useAuthToken(); // ✅ Google OAuth token handler
+
+  const showToast = (message, type = "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+  };
 
   // 🟢 If already logged in, redirect by role
   useEffect(() => {
@@ -50,7 +59,7 @@ export function LoginPage() {
         navigate("/buildings");
       }
     } catch (err) {
-      alert("Login failed. Please check your credentials.");
+      showToast("Login failed. Please check your credentials.", "error");
       console.error(err);
     } finally {
       setLoading(false);
@@ -68,6 +77,13 @@ export function LoginPage() {
 
   return (
     <div className="auth-container">
+      {/* ✅ Toast Notification */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+
       <div
         className="auth-background"
         style={{ backgroundImage: `url(/loginpic.jpg)` }}
