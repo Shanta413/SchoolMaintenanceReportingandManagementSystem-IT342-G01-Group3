@@ -10,11 +10,17 @@ import java.time.Instant;
 public class IssueSummaryDTO {
     private String id;
     private String issueTitle;
+    private String issueDescription;
+    private String issueLocation;
+    private String exactLocation;
     private String issuePriority;
     private String issueStatus;
+    private Instant issueCreatedAt;
     private String buildingId;
     private String buildingName;
     private String issuePhotoUrl;
-    private Instant issueCreatedAt;
-    private String reportedByName;  // <-- Make sure this exists!
+    private String issueReportFile; // <-- add this line
+    private String reportedByName;
+    private String resolvedById;    // <-- if you want to display the resolver in summary
+    private String resolvedByName;
 }

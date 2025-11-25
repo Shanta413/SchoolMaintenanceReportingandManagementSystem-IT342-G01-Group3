@@ -4,6 +4,7 @@ import { ArrowLeft, Search, User, Calendar, Edit, Trash2, ClipboardCheck } from 
 import { getBuildingByCode } from "../../api/building";
 import { getIssuesByBuilding, updateIssue, deleteIssue } from "../../api/issues";
 import IssueResolutionModal from '../../components/staff/IssueResolutionModal';
+import IssueResolvedModal from '../../components/staff/IssueResolvedModal'; // NEW!
 import "../../css/BuildingDetails.css";
 
 export default function AdminBuildingDetail() {
@@ -93,13 +94,13 @@ export default function AdminBuildingDetail() {
     }
   };
 
-  // Only pass fields to update, always send the issue ID
-  const handleModalSave = async (updateFields) => {
+  // --- KEY CHANGE: Accept and pass file argument!
+  const handleModalSave = async (updateFields, resolutionFile) => {
     if (!selectedIssue?.id) {
       alert("Could not update: Issue ID missing!");
       return;
     }
-    await updateIssue(selectedIssue.id, { ...selectedIssue, ...updateFields });
+    await updateIssue(selectedIssue.id, { ...selectedIssue, ...updateFields }, resolutionFile);
     setShowModal(false);
     setSelectedIssue(null);
     // Refresh issues
@@ -299,14 +300,30 @@ export default function AdminBuildingDetail() {
           )}
         </div>
       </main>
-      {/* --- Issue Resolution/Edit Modal --- */}
-      <IssueResolutionModal
-        isOpen={showModal}
-        issue={selectedIssue}
-        onSave={handleModalSave}
-        onClose={handleModalClose}
-        buttonLabel="Submit"      // Pass buttonLabel prop to modal
-      />
+
+      {/* --- Issue Resolution/Edit Modal (Active/Resolved) --- */}
+      {showModal && selectedIssue && (
+        isResolved(selectedIssue.issueStatus)
+          ? (
+            <IssueResolvedModal
+              isOpen={showModal}
+              issue={selectedIssue}
+              onSave={handleModalSave}
+              onClose={handleModalClose}
+              onDelete={() => handleDelete(selectedIssue.id)}
+              isEditing={true}
+            />
+          ) : (
+            <IssueResolutionModal
+              isOpen={showModal}
+              issue={selectedIssue}
+              onSave={handleModalSave}
+              onClose={handleModalClose}
+              onDelete={() => handleDelete(selectedIssue.id)}
+              isEditing={true}
+            />
+          )
+      )}
     </div>
   );
 }
