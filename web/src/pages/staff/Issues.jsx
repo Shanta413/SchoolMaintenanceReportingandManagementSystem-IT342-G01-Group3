@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Edit2, Trash2 } from 'lucide-react';
 import '../../css/Issues.css';
 import CreateBuildingModal from '../../components/staff/CreateBuildingModal';
-import { getAllBuildings } from '../../api/building';
+import UpdateBuildingModal from '../../components/staff/UpdateBuildingModal';
+import { getAllBuildings, deleteBuilding } from '../../api/building';
 
 function Issues() {
   const [showModal, setShowModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,9 +19,9 @@ function Issues() {
   // Fetch buildings with issue counts
   useEffect(() => {
     fetchBuildings();
-  }, []);
+  }, [fetchBuildings]);
 
-  const fetchBuildings = async () => {
+  const fetchBuildings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -28,24 +33,64 @@ function Issues() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleBuildingCreated = (newBuilding) => {
+  const handleBuildingCreated = useCallback((newBuilding) => {
     setBuildings(prev => [...prev, newBuilding]);
-  };
+  }, []);
 
-  const handleBuildingClick = (building) => {
-  navigate(`/staff/buildings/${building.buildingCode}`);
-};
+  const handleBuildingUpdated = useCallback((updatedBuilding) => {
+    setBuildings(prev => prev.map(b => 
+      b.id === updatedBuilding.id ? updatedBuilding : b
+    ));
+  }, []);
 
-  const getTotalIssues = (building) => {
-    // If your API returns issue counts, calculate total
+  const handleBuildingClick = useCallback((building, e) => {
+    // Don't navigate if clicking on action buttons
+    if (e?.target?.closest('.building-actions')) {
+      return;
+    }
+    navigate(`/staff/buildings/${building.buildingCode}`);
+  }, [navigate]);
+
+  const handleEditClick = useCallback((building, e) => {
+    e.stopPropagation();
+    setSelectedBuilding(building);
+    setShowUpdateModal(true);
+  }, []);
+
+  const handleDeleteClick = useCallback((building, e) => {
+    e.stopPropagation();
+    setSelectedBuilding(building);
+    setShowDeleteModal(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedBuilding?.id) return;
+    
+    try {
+      await deleteBuilding(selectedBuilding.id);
+      setBuildings(prev => prev.filter(b => b.id !== selectedBuilding.id));
+      setShowDeleteModal(false);
+      setSelectedBuilding(null);
+    } catch (error) {
+      console.error("Error deleting building:", error);
+      setError("Failed to delete building. Please try again.");
+      setShowDeleteModal(false);
+      setSelectedBuilding(null);
+    }
+  }, [selectedBuilding]);
+
+  const getTotalIssues = useCallback((building) => {
     if (building.issueCount) {
       return building.issueCount.high + building.issueCount.medium + building.issueCount.low;
     }
-    // Default to 0 if no issues
     return 0;
-  };
+  }, []);
+
+  const sortedBuildings = useMemo(() => {
+    return [...buildings].sort((a, b) => getTotalIssues(b) - getTotalIssues(a));
+  }, [buildings, getTotalIssues]);
 
   return (
     <div className="issues-page">
@@ -64,6 +109,40 @@ function Issues() {
         onClose={() => setShowModal(false)}
         onBuildingCreated={handleBuildingCreated}
       />
+
+      <UpdateBuildingModal
+        isOpen={showUpdateModal}
+        onClose={() => {
+          setShowUpdateModal(false);
+          setSelectedBuilding(null);
+        }}
+        onBuildingUpdated={handleBuildingUpdated}
+        building={selectedBuilding}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedBuilding && (
+        <div className="modal-overlay" onClick={() => {
+          setShowDeleteModal(false);
+          setSelectedBuilding(null);
+        }}>
+          <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Building</h2>
+            <p>Are you sure you want to delete <strong>{selectedBuilding.buildingName}</strong> ({selectedBuilding.buildingCode})? This action cannot be undone.</p>
+            <div className="modal-actions">
+              <button type="button" onClick={() => {
+                setShowDeleteModal(false);
+                setSelectedBuilding(null);
+              }}>
+                Cancel
+              </button>
+              <button type="button" className="danger-btn" onClick={handleDeleteConfirm}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="error-banner">
@@ -85,27 +164,46 @@ function Issues() {
             <p>Create your first building to start tracking issues</p>
           </div>
         ) : (
-          buildings
-            .sort((a, b) => getTotalIssues(b) - getTotalIssues(a))
-            .map((building) => (
+          sortedBuildings.map((building) => (
               <div
                 key={building.id}
                 className="building-card"
-                onClick={() => handleBuildingClick(building)}
+                onClick={(e) => handleBuildingClick(building, e)}
               >
                 <div className="building-image-container">
                   <img
                       src={building.buildingImageUrl || '/placeholder-building.jpg'}
                       alt={building.buildingName}
                       className="building-image"
+                      loading="lazy"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/400x200/e5e7eb/6b7280?text=Building+Image';
                       }}
                     />
                 </div>
                 <div className="building-info">
-                  <h3 className="building-name">{building.buildingName}</h3>
-                  <p className="building-subtitle">{building.buildingCode}</p>
+                  <div className="building-header">
+                    <div>
+                      <h3 className="building-name">{building.buildingName}</h3>
+                      <p className="building-subtitle">{building.buildingCode}</p>
+                    </div>
+                    <div className="building-actions">
+                      <button
+                        className="action-btn edit-btn"
+                        onClick={(e) => handleEditClick(building, e)}
+                        aria-label="Edit building"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        className="action-btn delete-btn"
+                        onClick={(e) => handleDeleteClick(building, e)}
+                        aria-label="Delete building"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
                   
                   <div className="priority-badges">
                     <span className="badge badge-high">
@@ -318,6 +416,46 @@ function Issues() {
         .loading-state {
           color: #6b7280;
           font-size: 1rem;
+        }
+
+        .building-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 1rem;
+        }
+
+        .building-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .action-btn {
+          background: transparent;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
+          padding: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          color: #6b7280;
+        }
+
+        .action-btn:hover {
+          background: #f9fafb;
+          border-color: #d1d5db;
+        }
+
+        .edit-btn:hover {
+          color: #2563eb;
+          border-color: #2563eb;
+        }
+
+        .delete-btn:hover {
+          color: #dc2626;
+          border-color: #dc2626;
         }
 
         @media (max-width: 768px) {
