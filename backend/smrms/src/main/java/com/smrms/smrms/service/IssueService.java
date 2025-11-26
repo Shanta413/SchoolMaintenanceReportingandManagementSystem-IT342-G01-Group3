@@ -43,7 +43,11 @@ public class IssueService {
         // Upload report file if provided
         String reportUrl = null;
         if (reportFile != null && !reportFile.isEmpty()) {
+            System.out.println("[CREATE] Received report file: " + reportFile.getOriginalFilename());
             reportUrl = storage.upload(reportFile);
+            System.out.println("[CREATE] Supabase uploaded report URL: " + reportUrl);
+        } else {
+            System.out.println("[CREATE] No report file received for this issue.");
         }
 
         // Create and save the issue
@@ -87,7 +91,6 @@ public class IssueService {
     public IssueResponse getIssue(String id) {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
-
         return mapToResponse(issue);
     }
 
@@ -103,6 +106,7 @@ public class IssueService {
         System.out.println("Received Title: " + req.getIssueTitle());
         System.out.println("Received Status: " + req.getIssueStatus());
         System.out.println("ResolvedByStaffId from frontend: " + req.getResolvedByStaffId());
+        System.out.println("Report file received: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
         System.out.println("============================");
 
         Issue issue = issueRepository.findById(id)
@@ -127,9 +131,7 @@ public class IssueService {
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // ============================
         // RESOLVER (staff/technician)
-        // ============================
         if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
 
             System.out.println("Looking up resolver user ID: " + req.getResolvedByStaffId());
@@ -140,7 +142,7 @@ public class IssueService {
             issue.setResolvedBy(resolver);
 
             // mark as completed if status = resolved
-            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
+            if ("FIXED".equalsIgnoreCase(req.getIssueStatus()) || "RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
                 issue.setIssueCompletedAt(Instant.now());
             }
 
@@ -149,7 +151,7 @@ public class IssueService {
             System.out.println("No resolver selected.");
 
             // If status is not RESOLVED, remove resolver + completion time
-            if (!"RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
+            if (!"FIXED".equalsIgnoreCase(req.getIssueStatus()) && !"RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
                 issue.setResolvedBy(null);
                 issue.setIssueCompletedAt(null);
             }
@@ -159,8 +161,12 @@ public class IssueService {
         // FILE UPLOAD
         // ============================
         if (reportFile != null && !reportFile.isEmpty()) {
+            System.out.println("[UPDATE] Uploading report file: " + reportFile.getOriginalFilename());
             String reportUrl = storage.upload(reportFile);
+            System.out.println("[UPDATE] Supabase uploaded report URL: " + reportUrl);
             issue.setIssueReportFile(reportUrl);
+        } else {
+            System.out.println("[UPDATE] No new report file uploaded.");
         }
 
         issueRepository.save(issue);
@@ -179,13 +185,19 @@ public class IssueService {
         return IssueSummaryDTO.builder()
                 .id(i.getId())
                 .issueTitle(i.getIssueTitle())
+                .issueDescription(i.getIssueDescription())
+                .issueLocation(i.getIssueLocation())
+                .exactLocation(i.getExactLocation())
                 .issuePriority(i.getIssuePriority().name())
                 .issueStatus(i.getIssueStatus().name())
                 .issueCreatedAt(i.getIssueCreatedAt())
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
+                .issueReportFile(i.getIssueReportFile()) // <-- include this!
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
+                .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
+                .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
     }
 

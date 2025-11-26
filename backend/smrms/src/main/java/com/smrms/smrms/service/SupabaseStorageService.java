@@ -28,24 +28,34 @@ public class SupabaseStorageService {
 
     /**
      * Uploads a multipart file to Supabase Storage and returns its PUBLIC URL.
-     * The bucket must be public.
+     * Only PDF, DOC, DOCX allowed. The bucket must be public.
      */
     public String upload(MultipartFile file) throws Exception {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
 
-        // Sanitize filename and content-type
+        // File type check
         String original = file.getOriginalFilename();
-        String safeName = (original == null || original.isBlank() ? "avatar.jpg" : original)
-                .replaceAll("\\s+", "_");
-
+        String ext = original != null ? original.toLowerCase() : "";
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
-            contentType = MediaType.IMAGE_JPEG_VALUE;
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+
+        // Check by extension
+        boolean isAllowedExt = ext.endsWith(".pdf") || ext.endsWith(".doc") || ext.endsWith(".docx");
+        // Check by content type
+        boolean isAllowedType =
+                contentType.equals("application/pdf") ||
+                        contentType.equals("application/msword") ||
+                        contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        if (!isAllowedExt || !isAllowedType) {
+            throw new IllegalArgumentException("Only PDF, DOC, or DOCX files are allowed.");
         }
 
         // Build upload URL: POST /storage/v1/object/{bucket}/{path}
+        String safeName = (original == null || original.isBlank() ? "document.pdf" : original.replaceAll("\\s+", "_"));
         String objectPath = UUID.randomUUID() + "_" + safeName;
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + bucket + "/" + objectPath);
 

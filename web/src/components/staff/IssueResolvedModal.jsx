@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
 import { getAllStaff } from "../../api/staff";
 import "../../css/IssueResolutionModal.css";
 
@@ -11,17 +11,57 @@ const PRIORITY_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: "ACTIVE", label: "Active" },
-  { value: "FIXED", label: "Resolved" }, // Backend value is FIXED
+  { value: "FIXED", label: "Resolved" },
 ];
 
-// Allowed MIME types for upload
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
+// Confirm Revert Modal
+function ConfirmRevertModal({ open, onConfirm, onCancel, hasFile, fileUrl }) {
+  if (!open) return null;
+  return (
+    <div className="modal-backdrop" style={{ zIndex: 1500 }}>
+      <div className="modal-box" style={{ minWidth: 340, maxWidth: 400 }}>
+        <div style={{ textAlign: "center", padding: 20 }}>
+          <h3 style={{ marginBottom: 10, color: "#b91c1c" }}>Revert to Active?</h3>
+          <p style={{ color: "#475569", fontSize: 15 }}>
+            Changing status to <b>Active</b> will <b>remove the resolver and attached report file</b>.
+          </p>
+          {hasFile && (
+            <div style={{ margin: "10px 0", color: "#dc2626", fontWeight: 500 }}>
+              Download the file before proceeding!
+              <br />
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  marginTop: 4,
+                  color: "#2563eb",
+                  textDecoration: "underline",
+                  fontSize: "1rem"
+                }}
+              >
+                <Download size={16} style={{ marginRight: 6 }} />
+                Download Report
+              </a>
+            </div>
+          )}
+        </div>
+        <div className="modal-actions" style={{ justifyContent: "center", gap: 12 }}>
+          <button className="modal-btn modal-btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="modal-btn modal-btn-danger" onClick={onConfirm}>
+            Yes, Revert
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-export default function IssueResolutionModal({
+export default function IssueResolvedModal({
   isOpen,
   onClose,
   onSave,
@@ -33,73 +73,84 @@ export default function IssueResolutionModal({
     issueTitle: "",
     issueDescription: "",
     issuePriority: "MEDIUM",
-    issueStatus: "ACTIVE",
+    issueStatus: "FIXED",
     issueLocation: "",
     exactLocation: "",
     resolvedByStaffId: "",
+    issueReportFile: null,
   });
   const [staffList, setStaffList] = useState([]);
   const [uploadFile, setUploadFile] = useState(null);
-  const [fileError, setFileError] = useState("");
-  const [showPhoto, setShowPhoto] = useState(false);
+
+  // For confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // If user sets back to ACTIVE, fields become editable again
+  const [statusChangedToActive, setStatusChangedToActive] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      // Debug: show full issue object from parent/API
-      console.log("Issue object from props (API):", issue);
-
       setForm({
         issueTitle: issue.issueTitle || "",
         issueDescription: issue.issueDescription || "",
         issuePriority: issue.issuePriority || "MEDIUM",
-        issueStatus: issue.issueStatus || "ACTIVE",
+        issueStatus: issue.issueStatus || "FIXED",
         issueLocation: issue.issueLocation || "",
         exactLocation: issue.exactLocation || "",
-        resolvedByStaffId: issue.resolvedByStaffId || "",
+        resolvedByStaffId: issue.resolvedById || "",
+        issueReportFile: issue.issueReportFile || null,
       });
       setUploadFile(null);
-      setFileError("");
-      getAllStaff().then(staffArr => {
-        // Debug: see what staff the API is giving you
-        console.log("Staff List from API:", staffArr);
-        setStaffList(staffArr || []);
-      });
+      setStatusChangedToActive(false);
+      setShowConfirmModal(false);
+      getAllStaff().then(staffArr => setStaffList(staffArr || []));
     }
+    // eslint-disable-next-line
   }, [isOpen, issue]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    // Debug: Log every change in form
-    console.log(`[Form Change] ${name}:`, value);
+    // Special: handle Status change
+    if (name === "issueStatus") {
+      if (form.issueStatus === "FIXED" && value === "ACTIVE") {
+        setShowConfirmModal(true);
+        return;
+      }
+      setForm((prev) => ({ ...prev, [name]: value }));
+      if (value === "ACTIVE") {
+        setStatusChangedToActive(true);
+      } else {
+        setStatusChangedToActive(false);
+      }
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
-  // Only accept PDF, DOC, DOCX
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    console.log("[File Upload] Attempting to upload:", file);
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setFileError("Only PDF, DOC, or DOCX files allowed.");
-      setUploadFile(null);
-      console.log("[File Upload] Invalid file type:", file.type);
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) { // 10MB limit
-      setFileError("Max file size is 10MB.");
-      setUploadFile(null);
-      console.log("[File Upload] File too large:", file.size);
-      return;
-    }
-    setUploadFile(file);
-    setFileError("");
-    console.log("[File Upload] File accepted:", file);
+    setUploadFile(e.target.files[0]);
   };
+
+  // Handle confirming revert
+  const handleConfirmRevert = () => {
+    setForm((prev) => ({
+      ...prev,
+      issueStatus: "ACTIVE",
+      resolvedByStaffId: "",
+      issueReportFile: null,
+    }));
+    setUploadFile(null);
+    setShowConfirmModal(false);
+    setStatusChangedToActive(true);
+  };
+  const handleCancelRevert = () => {
+    setShowConfirmModal(false);
+  };
+
+  // Only allow editing when status is ACTIVE (after revert)
+  const isEditable = statusChangedToActive || form.issueStatus === "ACTIVE";
 
   const handleSubmit = () => {
-    // 🟢 DEBUG: Log what you're about to send to the API
-    console.log("🟢 Will call onSave with:", form, uploadFile);
-
     if (!form.issueTitle || !form.issuePriority || !form.issueStatus) {
       alert("Please fill all required fields (title, priority, status)");
       return;
@@ -108,10 +159,32 @@ export default function IssueResolutionModal({
       alert("Select the staff/group who resolved the issue.");
       return;
     }
-    onSave(form, uploadFile); // Pass as separate arguments!
+    onSave({
+      ...form,
+      uploadFile,
+    });
   };
 
   if (!isOpen) return null;
+
+  // Show confirmation modal if needed
+  if (showConfirmModal) {
+    return (
+      <ConfirmRevertModal
+        open={showConfirmModal}
+        onConfirm={handleConfirmRevert}
+        onCancel={handleCancelRevert}
+        hasFile={!!form.issueReportFile}
+        fileUrl={form.issueReportFile}
+      />
+    );
+  }
+
+  // Utility to check if file is PDF/DOC/DOCX (for download)
+  const isDownloadableFile = (url) => {
+    if (!url) return false;
+    return /\.(pdf|doc|docx)$/i.test(url.split("?")[0]);
+  };
 
   return (
     <div className="modal-backdrop">
@@ -119,94 +192,30 @@ export default function IssueResolutionModal({
         <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
           <X />
         </button>
-        <h2 className="modal-title">{isEditing ? "Edit Issue" : "Resolve Issue"}</h2>
+        <h2 className="modal-title">{isEditing ? "Resolved Issue" : "Resolved Issue"}</h2>
 
-        {/* VIEW ISSUE PHOTO LINK */}
+        {/* View Issue Photo Button */}
         {issue.issuePhotoUrl && (
           <div style={{ marginBottom: 10 }}>
-            <button
-              type="button"
+            <a
+              href={issue.issuePhotoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
-                background: "none",
-                border: "none",
                 color: "#2563eb",
                 textDecoration: "underline",
-                cursor: "pointer",
-                fontSize: "1rem",
-                padding: 0
+                fontSize: "1rem"
               }}
-              onClick={() => setShowPhoto(true)}
             >
               View Issue Photo
-            </button>
-          </div>
-        )}
-
-        {/* IMAGE POPUP MODAL */}
-        {showPhoto && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 2000
-            }}
-            onClick={() => setShowPhoto(false)}
-          >
-            <div
-              style={{
-                background: "#fff",
-                padding: 16,
-                borderRadius: 10,
-                boxShadow: "0 6px 30px rgba(0,0,0,0.25)",
-                maxWidth: 420,
-                maxHeight: "80vh",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                position: "relative"
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                style={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  background: "none",
-                  border: "none",
-                  fontSize: 22,
-                  color: "#374151",
-                  cursor: "pointer"
-                }}
-                onClick={() => setShowPhoto(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <img
-                src={issue.issuePhotoUrl}
-                alt="Issue"
-                style={{
-                  maxWidth: "380px",
-                  maxHeight: "60vh",
-                  borderRadius: 8,
-                  marginBottom: 8,
-                  objectFit: "contain"
-                }}
-              />
-              <div style={{ color: "#374151", fontSize: 13 }}>{issue.issueTitle}</div>
-            </div>
+            </a>
           </div>
         )}
 
         <div className="modal-form-grid">
           {/* --- Issue Title --- */}
           <label className="modal-label" htmlFor="issue-title">
-            Issue Title <span style={{ color: "#dc2626" }}>*</span>
+            Issue Title
           </label>
           <input
             id="issue-title"
@@ -214,15 +223,14 @@ export default function IssueResolutionModal({
             className="modal-input"
             value={form.issueTitle}
             onChange={handleChange}
-            placeholder="Enter issue title"
-            required
+            disabled={!isEditable}
           />
 
           {/* --- Priority & Status --- */}
           <div className="modal-flex-row">
             <div>
               <label className="modal-label" htmlFor="issue-priority">
-                Priority Level <span style={{ color: "#dc2626" }}>*</span>
+                Priority Level
               </label>
               <select
                 id="issue-priority"
@@ -230,7 +238,7 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 value={form.issuePriority}
                 onChange={handleChange}
-                required
+                disabled={!isEditable}
               >
                 {PRIORITY_OPTIONS.map(opt => (
                   <option value={opt.value} key={opt.value}>{opt.label}</option>
@@ -239,7 +247,7 @@ export default function IssueResolutionModal({
             </div>
             <div>
               <label className="modal-label" htmlFor="issue-status">
-                Status <span style={{ color: "#dc2626" }}>*</span>
+                Status
               </label>
               <select
                 id="issue-status"
@@ -247,7 +255,6 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 value={form.issueStatus}
                 onChange={handleChange}
-                required
               >
                 {STATUS_OPTIONS.map(opt => (
                   <option value={opt.value} key={opt.value}>{opt.label}</option>
@@ -266,7 +273,7 @@ export default function IssueResolutionModal({
             className="modal-input"
             value={form.issueDescription}
             onChange={handleChange}
-            placeholder="Describe the issue..."
+            disabled={!isEditable}
             rows={2}
           />
 
@@ -282,7 +289,7 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 value={form.issueLocation}
                 onChange={handleChange}
-                placeholder="e.g., SAL Building"
+                disabled={!isEditable}
               />
             </div>
             <div>
@@ -295,7 +302,7 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 value={form.exactLocation}
                 onChange={handleChange}
-                placeholder="e.g., 3rd Floor, Room 301"
+                disabled={!isEditable}
               />
             </div>
           </div>
@@ -306,7 +313,7 @@ export default function IssueResolutionModal({
               Resolution Details
             </h4>
             <label className="modal-label" htmlFor="resolved-by" style={{ marginTop: 6 }}>
-              Who or What Group Fixed This Issue {form.issueStatus === "FIXED" && <span style={{ color: "#dc2626" }}>*</span>}
+              Who or What Group Fixed This Issue
             </label>
             <select
               id="resolved-by"
@@ -314,7 +321,7 @@ export default function IssueResolutionModal({
               className="modal-input"
               value={form.resolvedByStaffId}
               onChange={handleChange}
-              disabled={form.issueStatus !== "FIXED"}
+              disabled={!isEditable}
             >
               <option value="">Select staff/group</option>
               {staffList.map((staff) => (
@@ -325,22 +332,36 @@ export default function IssueResolutionModal({
             </select>
 
             <label className="modal-label" htmlFor="resolution-upload" style={{ marginTop: 10 }}>
-              Upload Report (PDF/DOC/DOCX)
+              Upload Report (optional)
             </label>
             <input
               id="resolution-upload"
               type="file"
               className="modal-input"
               onChange={handleFileChange}
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              disabled={form.issueStatus !== "FIXED"}
+              accept=".pdf,.doc,.docx"
+              disabled={!isEditable}
             />
-            {fileError && (
-              <div style={{ color: "#dc2626", fontSize: 13, marginTop: 2 }}>{fileError}</div>
-            )}
-            {uploadFile && (
-              <div style={{ marginTop: 8, color: "#16a34a" }}>
-                {uploadFile.name}
+
+            {/* Download Report Button */}
+            {form.issueReportFile && isDownloadableFile(form.issueReportFile) && (
+              <div style={{ marginTop: 8 }}>
+                <a
+                  href={form.issueReportFile}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    color: "#2563eb",
+                    textDecoration: "underline",
+                    fontWeight: 500
+                  }}
+                >
+                  <Download size={16} style={{ marginRight: 6 }} />
+                  Download Report
+                </a>
               </div>
             )}
           </div>
@@ -353,10 +374,10 @@ export default function IssueResolutionModal({
             </button>
           )}
           <button className="modal-btn modal-btn-secondary" onClick={onClose}>
-            Cancel
+            Close
           </button>
           <button className="modal-btn modal-btn-primary" onClick={handleSubmit}>
-            Submit
+            Save
           </button>
         </div>
       </div>

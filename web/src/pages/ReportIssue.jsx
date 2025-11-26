@@ -108,11 +108,12 @@ function ReportIssue() {
     try {
       await createIssue(
         {
-          issueTitle: title,
-          issueDescription: description,
-          issueLocation: locationText,
-          issuePriority: priority,
-          buildingId: selectedBuilding.id,
+           issueTitle: title,
+            issueDescription: description,
+            issueLocation: buildingCode,          // or the selected building name/code, if you want!
+            exactLocation: locationText,          // <--- FIXED: Send this as exactLocation!
+            issuePriority: priority,
+            buildingId: selectedBuilding.id,
         },
         photo
       );
