@@ -25,10 +25,16 @@ public class BuildingService {
     private final SupabaseStorageService supabaseStorageService;
 
     /**
-     * Create new building
+     * CREATE BUILDING
      */
     public BuildingResponse createBuilding(BuildingCreateRequest request, MultipartFile file) throws Exception {
-        // Uniqueness checks
+
+        System.out.println("===== SERVICE: createBuilding =====");
+        System.out.println("Code: " + request.getBuildingCode());
+        System.out.println("Name: " + request.getBuildingName());
+        System.out.println("File: " + (file != null ? file.getOriginalFilename() : "NULL"));
+        System.out.println("===================================");
+
         if (buildingRepository.existsByBuildingCode(request.getBuildingCode())) {
             throw new RuntimeException("Building code already exists");
         }
@@ -36,13 +42,12 @@ public class BuildingService {
             throw new RuntimeException("Building name already exists");
         }
 
-        // Upload image to Supabase if provided
         String imageUrl = null;
         if (file != null && !file.isEmpty()) {
-            imageUrl = supabaseStorageService.upload(file);
+            // IMPORTANT: building images = IMAGE upload
+            imageUrl = supabaseStorageService.upload(file, "image");
         }
 
-        // Set timestamps
         LocalDateTime now = LocalDateTime.now();
 
         Building building = Building.builder()
@@ -55,12 +60,49 @@ public class BuildingService {
                 .build();
 
         building = buildingRepository.save(building);
+        return toResponse(building);
+    }
+
+    /**
+     * UPDATE BUILDING
+     */
+    public BuildingResponse updateBuilding(String id, BuildingCreateRequest request, MultipartFile file) throws Exception {
+
+        System.out.println("===== SERVICE: updateBuilding =====");
+        System.out.println("ID: " + id);
+        System.out.println("New Code: " + request.getBuildingCode());
+        System.out.println("New Name: " + request.getBuildingName());
+        System.out.println("File: " + (file != null ? file.getOriginalFilename() : "NULL"));
+        System.out.println("===================================");
+
+        Building building = buildingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Building not found: " + id));
+
+        building.setBuildingCode(request.getBuildingCode());
+        building.setBuildingName(request.getBuildingName());
+
+        if (file != null && !file.isEmpty()) {
+            // IMPORTANT: update building image = IMAGE upload
+            String newImageUrl = supabaseStorageService.upload(file, "image");
+            building.setBuildingImageUrl(newImageUrl);
+        }
+
+        building.setBuildingUpdatedAt(LocalDateTime.now());
+        building = buildingRepository.save(building);
 
         return toResponse(building);
     }
 
     /**
-     * Get all active buildings
+     * DELETE BUILDING
+     */
+    public void deleteBuilding(String id) {
+        System.out.println("SERVICE DELETE BUILDING ID: " + id);
+        buildingRepository.deleteById(id);
+    }
+
+    /**
+     * GET ACTIVE BUILDINGS
      */
     public List<BuildingResponse> getActiveBuildings() {
         return buildingRepository.findAllByBuildingIsActiveTrue()
@@ -70,7 +112,7 @@ public class BuildingService {
     }
 
     /**
-     * Get building by code ("RTL", "SAL", etc.)
+     * GET BUILDING BY CODE
      */
     public BuildingResponse getBuildingByCode(String buildingCode) {
         Building building = buildingRepository.findByBuildingCode(buildingCode)
@@ -80,16 +122,17 @@ public class BuildingService {
     }
 
     /**
-     * Get all buildings with issue counts!
+     * GET ALL BUILDINGS + ISSUE COUNTS
      */
     public List<BuildingSummaryDTO> getAllBuildingsWithIssueCount() {
         List<Building> buildings = buildingRepository.findAll();
+
         return buildings.stream().map(b -> {
             long high = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.HIGH);
             long medium = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.MEDIUM);
             long low = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.LOW);
 
-            IssueCountDTO issueCount = IssueCountDTO.builder()
+            IssueCountDTO count = IssueCountDTO.builder()
                     .high(high)
                     .medium(medium)
                     .low(low)
@@ -101,13 +144,13 @@ public class BuildingService {
                     .buildingName(b.getBuildingName())
                     .buildingIsActive(b.isBuildingIsActive())
                     .buildingImageUrl(b.getBuildingImageUrl())
-                    .issueCount(issueCount)
+                    .issueCount(count)
                     .build();
         }).collect(Collectors.toList());
     }
 
     /**
-     * Convert Entity → Response DTO
+     * Convert Entity → DTO
      */
     private BuildingResponse toResponse(Building b) {
         return BuildingResponse.builder()

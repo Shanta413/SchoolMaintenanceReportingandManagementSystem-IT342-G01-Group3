@@ -13,12 +13,22 @@ import java.util.Optional;
 @Repository
 public interface StudentRepository extends JpaRepository<Student, String> {
 
-    // ✅ JPQL constructor query matching StudentViewDTO (7 arguments)
-    @Query("SELECT new com.smrms.smrms.dto.StudentViewDTO(" +
-            " s.id, u.fullname, u.email, u.mobileNumber, " +
-            " s.studentDepartment, s.studentIdNumber, " +
-            " '', u.avatarUrl" +
-            ") FROM Student s JOIN s.user u")
+    @Query("""
+    SELECT new com.smrms.smrms.dto.StudentViewDTO(
+        s.id,
+        u.fullname,
+        u.email,
+        u.mobileNumber,
+        s.studentDepartment,
+        s.studentIdNumber,
+        '',
+        u.avatarUrl,
+        u.authMethod
+    )
+    FROM Student s
+    JOIN s.user u
+    ORDER BY u.fullname ASC
+    """)
     List<StudentViewDTO> findAllStudentViews();
 
     Optional<Student> findByUser(User user);

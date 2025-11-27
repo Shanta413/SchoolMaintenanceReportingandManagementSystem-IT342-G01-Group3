@@ -305,6 +305,24 @@ export default function IssueResolutionModal({
             <h4 style={{ color: "#16a34a", margin: 0, fontWeight: 600 }}>
               Resolution Details
             </h4>
+            {/* 👇 Sample Report Format link here */}
+            <a
+              href="https://docs.google.com/document/d/1iE7c7MKJDMSBsEBorRmOHl_R8SpuI04YTF0eq1DQLVw/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                marginBottom: 6,
+                color: "#2563eb",
+                textDecoration: "underline",
+                fontSize: "15px",
+                fontWeight: 500,
+                cursor: "pointer"
+              }}
+            >
+              📄 View Sample Report Format
+            </a>
+
             <label className="modal-label" htmlFor="resolved-by" style={{ marginTop: 6 }}>
               Who or What Group Fixed This Issue {form.issueStatus === "FIXED" && <span style={{ color: "#dc2626" }}>*</span>}
             </label>

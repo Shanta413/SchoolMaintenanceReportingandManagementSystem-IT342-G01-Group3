@@ -41,12 +41,13 @@ public class MaintenanceStaffController {
                     User u = ms.getUser();
                     return ResponseEntity.ok(
                             new MaintenanceStaffViewDTO(
-                                    ms.getId(),           // maintenance staff row ID
-                                    u.getId(),            // userId (REQUIRED NOW)
+                                    ms.getId(),
+                                    u.getId(),
                                     u.getFullname(),
                                     u.getEmail(),
                                     u.getMobileNumber(),
-                                    ms.getStaffId()
+                                    ms.getStaffId(),
+                                    u.getAuthMethod()
                             )
                     );
                 })
