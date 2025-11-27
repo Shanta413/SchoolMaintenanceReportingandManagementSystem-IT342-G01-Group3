@@ -3,7 +3,7 @@ import React, { useState, useCallback } from "react";
 import { createBuilding } from "../../api/building";
 import "../../css/AdminDashboard.css";
 
-const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) => {
+
 const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) => {
   const [buildingCode, setBuildingCode] = useState("");
   const [buildingName, setBuildingName] = useState("");
@@ -14,12 +14,10 @@ const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) 
   const handleFileChange = useCallback((e) => {
     setFile(e.target.files[0]);
   }, []);
-  const handleFileChange = useCallback((e) => {
-    setFile(e.target.files[0]);
-  }, []);
+
 
   const resetForm = useCallback(() => {
-  const resetForm = useCallback(() => {
+
     setBuildingCode("");
     setBuildingName("");
     setFile(null);
