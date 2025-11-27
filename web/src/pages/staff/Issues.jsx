@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Edit2, Trash2 } from 'lucide-react';
 import '../../css/Issues.css';
 import CreateBuildingModal from '../../components/staff/CreateBuildingModal';
 import EditBuildingModal from '../../components/staff/EditBuildingModal';
@@ -36,9 +37,9 @@ function Issues() {
 
   useEffect(() => {
     fetchBuildings();
-  }, []);
+  }, [fetchBuildings]);
 
-  const fetchBuildings = async () => {
+  const fetchBuildings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -50,11 +51,31 @@ function Issues() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleBuildingCreated = (newBuilding) => {
+  const handleBuildingCreated = useCallback((newBuilding) => {
     setBuildings(prev => [...prev, newBuilding]);
-  };
+  }, []);
+
+  const handleBuildingUpdated = useCallback((updatedBuilding) => {
+    setBuildings(prev => prev.map(b => 
+      b.id === updatedBuilding.id ? updatedBuilding : b
+    ));
+  }, []);
+
+  const handleBuildingClick = useCallback((building, e) => {
+    // Don't navigate if clicking on action buttons
+    if (e?.target?.closest('.building-actions')) {
+      return;
+    }
+    navigate(`/staff/buildings/${building.buildingCode}`);
+  }, [navigate]);
+
+  const handleEditClick = useCallback((building, e) => {
+    e.stopPropagation();
+    setSelectedBuilding(building);
+    setShowUpdateModal(true);
+  }, []);
 
   const handleBuildingUpdated = (updatedBuilding) => {
     setBuildings(prev =>
@@ -77,7 +98,11 @@ function Issues() {
       );
     }
     return 0;
-  };
+  }, []);
+
+  const sortedBuildings = useMemo(() => {
+    return [...buildings].sort((a, b) => getTotalIssues(b) - getTotalIssues(a));
+  }, [buildings, getTotalIssues]);
 
   const handleEdit = (building) => {
     setEditingBuilding(building);
@@ -158,13 +183,11 @@ function Issues() {
             </p>
           </div>
         ) : (
-          buildings
-            .sort((a, b) => getTotalIssues(b) - getTotalIssues(a))
-            .map((building) => (
+          sortedBuildings.map((building) => (
               <div
                 key={building.id}
                 className="building-card"
-                onClick={() => handleBuildingClick(building)}
+                onClick={(e) => handleBuildingClick(building, e)}
               >
                 {/* Card Content */}
                 <div className="building-image-container">
