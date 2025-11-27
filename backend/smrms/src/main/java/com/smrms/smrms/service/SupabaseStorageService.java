@@ -1,6 +1,5 @@
 package com.smrms.smrms.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -14,7 +13,6 @@ import java.net.URL;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class SupabaseStorageService {
 
     @Value("${supabase.url}")
@@ -27,15 +25,16 @@ public class SupabaseStorageService {
     private String serviceKey;
 
     /**
-     * Uploads a multipart file to Supabase Storage and returns its PUBLIC URL.
-     * Only PDF, DOC, DOCX allowed. The bucket must be public.
+     * Uploads a file to Supabase Storage and returns its PUBLIC URL.
+     * @param file The file to upload.
+     * @param type "image" for image files, "document" for doc/pdf.
      */
-    public String upload(MultipartFile file) throws Exception {
+    public String upload(MultipartFile file, String type) throws Exception {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
 
-        // File type check
+        // File extension and content-type checks
         String original = file.getOriginalFilename();
         String ext = original != null ? original.toLowerCase() : "";
         String contentType = file.getContentType();
@@ -43,19 +42,25 @@ public class SupabaseStorageService {
             contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
 
-        // Check by extension
-        boolean isAllowedExt = ext.endsWith(".pdf") || ext.endsWith(".doc") || ext.endsWith(".docx");
-        // Check by content type
-        boolean isAllowedType =
-                contentType.equals("application/pdf") ||
-                        contentType.equals("application/msword") ||
-                        contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        if (!isAllowedExt || !isAllowedType) {
-            throw new IllegalArgumentException("Only PDF, DOC, or DOCX files are allowed.");
+        boolean isAllowed = false;
+        if ("image".equalsIgnoreCase(type)) {
+            isAllowed = ext.endsWith(".jpg") || ext.endsWith(".jpeg") || ext.endsWith(".png") ||
+                    ext.endsWith(".gif") || ext.endsWith(".bmp") || ext.endsWith(".webp");
+            // Add more if you support more image types
+            if (!isAllowed) {
+                throw new IllegalArgumentException("Only JPG, JPEG, PNG, GIF, BMP, or WEBP image files are allowed.");
+            }
+        } else if ("document".equalsIgnoreCase(type)) {
+            isAllowed = ext.endsWith(".pdf") || ext.endsWith(".doc") || ext.endsWith(".docx");
+            if (!isAllowed) {
+                throw new IllegalArgumentException("Only PDF, DOC, or DOCX files are allowed.");
+            }
+        } else {
+            throw new IllegalArgumentException("Unknown file type: " + type);
         }
 
         // Build upload URL: POST /storage/v1/object/{bucket}/{path}
-        String safeName = (original == null || original.isBlank() ? "document.pdf" : original.replaceAll("\\s+", "_"));
+        String safeName = (original == null || original.isBlank() ? "file" : original.replaceAll("\\s+", "_"));
         String objectPath = UUID.randomUUID() + "_" + safeName;
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + bucket + "/" + objectPath);
 

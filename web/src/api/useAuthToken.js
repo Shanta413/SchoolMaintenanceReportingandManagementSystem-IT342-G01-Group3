@@ -10,8 +10,9 @@ export default function useAuthToken() {
     const role  = params.get("role"); // <-- from backend
 
     if (token) {
+      // 🔄 Use sessionStorage instead of localStorage
       localStorage.setItem("authToken", token);
-      if (role) localStorage.setItem("userRole", role);
+      if (role) sessionStorage.setItem("userRole", role);
 
       // clean URL
       window.history.replaceState({}, "", "/login");
