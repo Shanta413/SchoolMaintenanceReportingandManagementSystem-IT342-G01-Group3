@@ -142,7 +142,8 @@ public class UserController {
                     .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
             // ⬆️ upload to Supabase (service) — single-arg method!
-            String publicUrl = supabaseStorageService.upload(file);
+            String publicUrl = supabaseStorageService.upload(file, "image");// For avatars/buildings/photos
+
 
             // persist to DB
             user.setAvatarUrl(publicUrl);
@@ -169,20 +170,26 @@ public class UserController {
 
             var user = userOpt.get();
 
-            // Safely extract values
+            // Extract basic fields
             String fullname = (String) data.getOrDefault("fullname", "");
             String mobileNumber = (String) data.getOrDefault("mobileNumber", "");
             String password = (String) data.getOrDefault("password", "");
 
-            if (fullname != null && !fullname.isBlank()) {
-                user.setFullname(fullname);
-            }
-            if (mobileNumber != null && !mobileNumber.isBlank()) {
-                user.setMobileNumber(mobileNumber);
-            }
+            if (fullname != null && !fullname.isBlank()) user.setFullname(fullname);
+            if (mobileNumber != null && !mobileNumber.isBlank()) user.setMobileNumber(mobileNumber);
             if (password != null && !password.isBlank()) {
                 user.setPassword(passwordEncoder.encode(password));
                 user.setPasswordUpdatedAt(LocalDateTime.now());
+            }
+
+            // 🔵 NEW EMAIL UPDATE HANDLING
+            String newEmail = (String) data.getOrDefault("newEmail", "");
+            if (newEmail != null && !newEmail.isBlank() && !user.getEmail().equals(newEmail)) {
+                if (userRepository.existsByEmail(newEmail)) {
+                    return ResponseEntity.badRequest().body("Email already exists!");
+                }
+                System.out.println("Changing email from " + user.getEmail() + " → " + newEmail);
+                user.setEmail(newEmail);
             }
 
             user.setUpdateAt(LocalDateTime.now());
@@ -195,4 +202,6 @@ public class UserController {
             return ResponseEntity.status(500).body("Error updating user: " + e.getMessage());
         }
     }
+
+
 }

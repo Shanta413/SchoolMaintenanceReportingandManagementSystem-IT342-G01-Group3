@@ -16,12 +16,18 @@ public interface MaintenanceStaffRepository extends JpaRepository<MaintenanceSta
     boolean existsByStaffId(String staffId);
 
     @Query("""
-    SELECT new com.smrms.smrms.dto.MaintenanceStaffViewDTO(
-        ms.id, u.id, u.fullname, u.email, u.mobileNumber, ms.staffId
-    )
-    FROM MaintenanceStaff ms
-    JOIN ms.user u
-    ORDER BY u.fullname ASC
-""")
-    List<MaintenanceStaffViewDTO> findAllStaffViews();
+        SELECT new com.smrms.smrms.dto.MaintenanceStaffViewDTO(
+            ms.id,
+            u.id,
+            u.fullname,
+            u.email,
+            u.mobileNumber,
+            ms.staffId,
+            u.authMethod
+        )
+        FROM MaintenanceStaff ms
+        JOIN ms.user u
+        ORDER BY u.fullname ASC
+        """)
+            List<MaintenanceStaffViewDTO> findAllStaffViews();
 }

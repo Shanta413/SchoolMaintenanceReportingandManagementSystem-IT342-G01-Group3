@@ -1,66 +1,77 @@
-import React, { useState, useCallback } from "react";
-import React, { useState, useCallback } from "react";
-import { createBuilding } from "../../api/building";
+import React, { useState, useEffect, useCallback } from "react";
+import { updateBuilding } from "../../api/building";
 import "../../css/AdminDashboard.css";
 
-
-const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) => {
+const UpdateBuildingModal = React.memo(({ isOpen, onClose, onBuildingUpdated, building }) => {
   const [buildingCode, setBuildingCode] = useState("");
   const [buildingName, setBuildingName] = useState("");
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Reset form when building changes
+  useEffect(() => {
+    if (building) {
+      setBuildingCode(building.buildingCode || "");
+      setBuildingName(building.buildingName || "");
+      setFile(null);
+      setError("");
+    }
+  }, [building]);
+
   const handleFileChange = useCallback((e) => {
     setFile(e.target.files[0]);
   }, []);
 
-
   const resetForm = useCallback(() => {
-
-    setBuildingCode("");
-    setBuildingName("");
+    if (building) {
+      setBuildingCode(building.buildingCode || "");
+      setBuildingName(building.buildingName || "");
+    }
     setFile(null);
     setError("");
     setLoading(false);
-  }, []);
-  }, []);
+  }, [building]);
 
   const handleSubmit = useCallback(async (e) => {
-  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
+    if (!building?.id) {
+      setError("Building ID is missing!");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
-      const result = await createBuilding(
+      const result = await updateBuilding(
+        building.id,
         { buildingCode, buildingName },
         file
       );
-
       resetForm();
-      onBuildingCreated(result);
+      onBuildingUpdated(result);
       onClose();
     } catch (err) {
       setError(
-        err.response?.data?.message || err.message || "Error creating building."
+        err.response?.data?.message || err.message || "Error updating building."
       );
     } finally {
       setLoading(false);
     }
-  }, [buildingCode, buildingName, file, onBuildingCreated, onClose, resetForm]);
+  }, [building, buildingCode, buildingName, file, onBuildingUpdated, onClose, resetForm]);
 
   const handleClose = useCallback(() => {
     resetForm();
     onClose();
   }, [resetForm, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !building) return null;
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content building-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Create Building</h2>
+        <h2>Update Building</h2>
         <form onSubmit={handleSubmit} className="building-form">
           <label>
             Building Code
@@ -83,12 +94,11 @@ const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) 
             />
           </label>
           <label>
-            Building Image
+            Building Image (optional - leave empty to keep current)
             <input
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              required
             />
           </label>
           {error && <div className="form-error">{error}</div>}
@@ -97,7 +107,7 @@ const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) 
               Cancel
             </button>
             <button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Building"}
+              {loading ? "Updating..." : "Update Building"}
             </button>
           </div>
         </form>
@@ -106,6 +116,7 @@ const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) 
   );
 });
 
-CreateBuildingModal.displayName = "CreateBuildingModal";
+UpdateBuildingModal.displayName = "UpdateBuildingModal";
 
-export default CreateBuildingModal;
+export default UpdateBuildingModal;
+

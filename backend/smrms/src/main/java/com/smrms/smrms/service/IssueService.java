@@ -19,6 +19,9 @@ public class IssueService {
     private final BuildingRepository buildingRepository;
     private final SupabaseStorageService storage;
 
+    // ==========================
+    // CREATE ISSUE
+    // ==========================
     public IssueResponse createIssue(
             String userEmail,
             IssueRequest req,
@@ -34,19 +37,25 @@ public class IssueService {
         Building building = buildingRepository.findById(req.getBuildingId())
                 .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingId()));
 
-        // Upload photo if provided
+        // Upload photo (IMAGE)
         String photoUrl = null;
         if (photo != null && !photo.isEmpty()) {
-            photoUrl = storage.upload(photo);
+            System.out.println("[CREATE] Uploading ISSUE PHOTO: " + photo.getOriginalFilename());
+            photoUrl = storage.upload(photo, "image");
+            System.out.println("[CREATE] Uploaded PHOTO URL: " + photoUrl);
         }
 
-        // Upload report file if provided
+        // Upload report file (DOCUMENT)
         String reportUrl = null;
         if (reportFile != null && !reportFile.isEmpty()) {
-            reportUrl = storage.upload(reportFile);
+            System.out.println("[CREATE] Uploading REPORT FILE: " + reportFile.getOriginalFilename());
+            reportUrl = storage.upload(reportFile, "document");
+            System.out.println("[CREATE] Uploaded REPORT URL: " + reportUrl);
+        } else {
+            System.out.println("[CREATE] No report file uploaded.");
         }
 
-        // Create and save the issue
+        // Build Issue
         Issue issue = Issue.builder()
                 .reportedBy(reporter)
                 .building(building)
@@ -67,6 +76,9 @@ public class IssueService {
         return mapToResponse(issue);
     }
 
+    // ==========================
+    // LIST ALL ISSUES
+    // ==========================
     public List<IssueSummaryDTO> getAllIssues() {
         return issueRepository.findAllByOrderByIssueCreatedAtDesc()
                 .stream()
@@ -74,6 +86,9 @@ public class IssueService {
                 .toList();
     }
 
+    // ==========================
+    // GET ISSUES BY BUILDING
+    // ==========================
     public List<IssueSummaryDTO> getIssuesByBuilding(String buildingId) {
         Building building = buildingRepository.findById(buildingId)
                 .orElseThrow(() -> new RuntimeException("Building not found: " + buildingId));
@@ -84,13 +99,18 @@ public class IssueService {
                 .toList();
     }
 
+    // ==========================
+    // GET ISSUE DETAILS
+    // ==========================
     public IssueResponse getIssue(String id) {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
-
         return mapToResponse(issue);
     }
 
+    // ==========================
+    // UPDATE ISSUE
+    // ==========================
     public IssueResponse updateIssue(
             String id,
             IssueUpdateRequest req,
@@ -100,71 +120,55 @@ public class IssueService {
 
         System.out.println("==== UPDATE ISSUE DEBUG ====");
         System.out.println("IssueID: " + id);
-        System.out.println("Received Title: " + req.getIssueTitle());
         System.out.println("Received Status: " + req.getIssueStatus());
-        System.out.println("ResolvedByStaffId from frontend: " + req.getResolvedByStaffId());
-        System.out.println("============================");
+        System.out.println("Resolver Staff Id: " + req.getResolvedByStaffId());
+        System.out.println("Report file: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
+        System.out.println("===================================");
 
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
 
-        // Update basic fields
+        // BASIC FIELDS
         if (req.getIssueTitle() != null)
             issue.setIssueTitle(req.getIssueTitle());
-
         if (req.getIssueDescription() != null)
             issue.setIssueDescription(req.getIssueDescription());
-
         if (req.getIssueLocation() != null)
             issue.setIssueLocation(req.getIssueLocation());
-
         if (req.getExactLocation() != null)
             issue.setExactLocation(req.getExactLocation());
-
         if (req.getIssuePriority() != null)
             issue.setIssuePriority(IssuePriority.valueOf(req.getIssuePriority().toUpperCase()));
-
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // ============================
-        // RESOLVER (staff/technician)
-        // ============================
+        // RESOLVER STAFF
         if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
-
-            System.out.println("Looking up resolver user ID: " + req.getResolvedByStaffId());
 
             User resolver = userRepository.findById(req.getResolvedByStaffId())
                     .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
 
             issue.setResolvedBy(resolver);
 
-            // mark as completed if status = resolved
-            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
+            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus()) ||
+                    "FIXED".equalsIgnoreCase(req.getIssueStatus())) {
                 issue.setIssueCompletedAt(Instant.now());
             }
 
         } else {
-            // No staff selected
-            System.out.println("No resolver selected.");
-
-            // If status is not RESOLVED, remove resolver + completion time
-            if (!"RESOLVED".equalsIgnoreCase(req.getIssueStatus())) {
-                issue.setResolvedBy(null);
-                issue.setIssueCompletedAt(null);
-            }
+            issue.setResolvedBy(null);
+            issue.setIssueCompletedAt(null);
         }
 
-        // ============================
-        // FILE UPLOAD
-        // ============================
+        // FILE UPLOAD (DOCUMENT ONLY)
         if (reportFile != null && !reportFile.isEmpty()) {
-            String reportUrl = storage.upload(reportFile);
-            issue.setIssueReportFile(reportUrl);
+            System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
+            String newUrl = storage.upload(reportFile, "document");
+            issue.setIssueReportFile(newUrl);
+            System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
         }
 
         issueRepository.save(issue);
-
         return mapToResponse(issue);
     }
 
@@ -174,22 +178,28 @@ public class IssueService {
         issueRepository.delete(issue);
     }
 
-    // Converts Issue entity to IssueSummaryDTO for summary responses
+    // Convert Issue → Summary DTO
     private IssueSummaryDTO mapToSummary(Issue i) {
         return IssueSummaryDTO.builder()
                 .id(i.getId())
                 .issueTitle(i.getIssueTitle())
+                .issueDescription(i.getIssueDescription())
+                .issueLocation(i.getIssueLocation())
+                .exactLocation(i.getExactLocation())
                 .issuePriority(i.getIssuePriority().name())
                 .issueStatus(i.getIssueStatus().name())
                 .issueCreatedAt(i.getIssueCreatedAt())
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
+                .issueReportFile(i.getIssueReportFile())
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
+                .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
+                .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
     }
 
-    // Converts Issue entity to full IssueResponse for details
+    // Convert Issue → Full Response
     private IssueResponse mapToResponse(Issue i) {
         return IssueResponse.builder()
                 .id(i.getId())

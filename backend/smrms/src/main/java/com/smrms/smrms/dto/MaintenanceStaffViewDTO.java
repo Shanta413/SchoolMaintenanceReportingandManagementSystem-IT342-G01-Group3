@@ -13,4 +13,5 @@ public class MaintenanceStaffViewDTO {
     private String email;
     private String mobileNumber;
     private String staffId;
+    private String authMethod;  // NEW
 }
