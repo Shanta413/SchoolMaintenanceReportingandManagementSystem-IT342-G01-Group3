@@ -2,11 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Settings, User, LogOut, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../css/components_css/UserMenu.css';
+import { useTheme } from "../context/useTheme"; // Theme context
+import { Sun, Moon } from "lucide-react"; // Icons for dark/light mode
 
 function UserMenu({ userName }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
+  
+  const { theme, toggleTheme } = useTheme(); // Dark mode
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -26,13 +30,8 @@ function UserMenu({ userName }) {
   }, [isOpen]);
 
   const handleLogout = () => {
-    // Clear authToken from localStorage
     localStorage.removeItem('authToken');
-    
-    // Close the menu
     setIsOpen(false);
-    
-    // Redirect to login page
     navigate('/login');
   };
 
@@ -50,6 +49,16 @@ function UserMenu({ userName }) {
         <div className="user-avatar">
           <Settings size={20} />
         </div>
+
+        {/* Dark Mode Toggle */}
+        <button 
+          className="theme-toggle-btn" 
+          onClick={(e) => { e.stopPropagation(); toggleTheme(); }}
+          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
         <ChevronDown size={16} />
       </button>
 
