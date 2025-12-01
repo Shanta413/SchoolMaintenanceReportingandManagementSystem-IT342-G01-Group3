@@ -45,6 +45,7 @@ cd web
 npm install
 npm install react-router-dom
 npm install @supabase/supabase-js
+npm install recharts
 npm run dev
 
 # --- Backend Setup ---
