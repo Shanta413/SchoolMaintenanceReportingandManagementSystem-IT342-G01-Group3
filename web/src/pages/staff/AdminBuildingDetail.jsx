@@ -4,7 +4,8 @@ import { ArrowLeft, Search, User, Calendar, Edit, Trash2, ClipboardCheck } from 
 import { getBuildingByCode } from "../../api/building";
 import { getIssuesByBuilding, updateIssue, deleteIssue } from "../../api/issues";
 import IssueResolutionModal from '../../components/staff/IssueResolutionModal';
-import IssueResolvedModal from '../../components/staff/IssueResolvedModal'; // NEW!
+import IssueResolvedModal from '../../components/staff/IssueResolvedModal';
+import AdminReportIssueModal from '../../components/staff/AdminReportIssueModal';
 import "../../css/BuildingDetails.css";
 
 export default function AdminBuildingDetail() {
@@ -23,6 +24,7 @@ export default function AdminBuildingDetail() {
   // --- Modal state
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Helper to check if issue is resolved
   const isResolved = (status) => status === 'FIXED' || status === 'RESOLVED';
@@ -42,15 +44,14 @@ export default function AdminBuildingDetail() {
       .finally(() => setLoading(false));
   }, [buildingCode]);
 
-  // Fetch real issues for this building from backend
+  // Fetch issues for this building
   useEffect(() => {
-    if (building) {
-      setIssuesLoading(true);
-      getIssuesByBuilding(building.id)
-        .then((data) => setIssues(data))
-        .catch(() => setIssues([]))
-        .finally(() => setIssuesLoading(false));
-    }
+    if (!building?.id) return; // <- SAFE GUARD!
+    setIssuesLoading(true);
+    getIssuesByBuilding(building.id)
+      .then((data) => setIssues(data))
+      .catch(() => setIssues([]))
+      .finally(() => setIssuesLoading(false));
   }, [building]);
 
   // Priority color helper
@@ -104,12 +105,21 @@ export default function AdminBuildingDetail() {
     setShowModal(false);
     setSelectedIssue(null);
     // Refresh issues
-    getIssuesByBuilding(building.id).then(setIssues);
+    if (building) {
+      getIssuesByBuilding(building.id).then(setIssues);
+    }
   };
 
   const handleModalClose = () => {
     setShowModal(false);
     setSelectedIssue(null);
+  };
+
+  const handleIssueCreated = () => {
+    // Refresh issues after creating new one
+    if (building) {
+      getIssuesByBuilding(building.id).then(setIssues);
+    }
   };
 
   if (loading) {
@@ -137,7 +147,6 @@ export default function AdminBuildingDetail() {
 
   return (
     <div className="building-detail-page">
-      {/* No <Header /> here for staff! Only sidebar from layout */}
       {/* Purple Header Banner */}
       <div className="building-header-banner">
         <div className="building-header-content">
@@ -153,6 +162,13 @@ export default function AdminBuildingDetail() {
               <p className="building-subtitle">{building?.buildingName}</p>
             </div>
           </div>
+          {/* Report Issue Button */}
+          <button
+            className="report-issue-button"
+            onClick={() => setShowReportModal(true)}
+          >
+            + Report Issue
+          </button>
         </div>
       </div>
 
@@ -323,6 +339,17 @@ export default function AdminBuildingDetail() {
               isEditing={true}
             />
           )
+      )}
+
+      {/* --- Admin Report Issue Modal: Only Render if Building Loaded --- */}
+      {building && (
+        <AdminReportIssueModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          buildingId={building.id}
+          buildingCode={building.buildingCode}
+          onIssueCreated={handleIssueCreated}
+        />
       )}
     </div>
   );

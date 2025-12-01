@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import React, { useState, useCallback } from "react";
 import { createBuilding } from "../../api/building";
 import "../../css/AdminDashboard.css";
 
@@ -18,15 +17,15 @@ const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated }) 
 
   const resetForm = useCallback(() => {
 
-    setBuildingCode("");
+
     setBuildingName("");
     setFile(null);
     setError("");
     setLoading(false);
-  }, []);
+
   }, []);
 
-  const handleSubmit = useCallback(async (e) => {
+ 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setLoading(true);

@@ -37,7 +37,7 @@ public class IssueService {
         Building building = buildingRepository.findById(req.getBuildingId())
                 .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingId()));
 
-        // Upload photo (IMAGE)
+        // Upload image
         String photoUrl = null;
         if (photo != null && !photo.isEmpty()) {
             System.out.println("[CREATE] Uploading ISSUE PHOTO: " + photo.getOriginalFilename());
@@ -45,7 +45,7 @@ public class IssueService {
             System.out.println("[CREATE] Uploaded PHOTO URL: " + photoUrl);
         }
 
-        // Upload report file (DOCUMENT)
+        // Upload PDF/doc file
         String reportUrl = null;
         if (reportFile != null && !reportFile.isEmpty()) {
             System.out.println("[CREATE] Uploading REPORT FILE: " + reportFile.getOriginalFilename());
@@ -55,7 +55,7 @@ public class IssueService {
             System.out.println("[CREATE] No report file uploaded.");
         }
 
-        // Build Issue
+        // Build and save issue
         Issue issue = Issue.builder()
                 .reportedBy(reporter)
                 .building(building)
@@ -172,13 +172,18 @@ public class IssueService {
         return mapToResponse(issue);
     }
 
+    // ==========================
+    // DELETE ISSUE
+    // ==========================
     public void deleteIssue(String id) {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
         issueRepository.delete(issue);
     }
 
+    // ==========================
     // Convert Issue → Summary DTO
+    // ==========================
     private IssueSummaryDTO mapToSummary(Issue i) {
         return IssueSummaryDTO.builder()
                 .id(i.getId())
@@ -193,13 +198,19 @@ public class IssueService {
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
                 .issueReportFile(i.getIssueReportFile())
+
+                // 🔥 MOST IMPORTANT FIELDS
+                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
+
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
     }
 
+    // ==========================
     // Convert Issue → Full Response
+    // ==========================
     private IssueResponse mapToResponse(Issue i) {
         return IssueResponse.builder()
                 .id(i.getId())
@@ -215,8 +226,12 @@ public class IssueService {
                 .issueCompletedAt(i.getIssueCompletedAt())
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
+
+                // Reporter
                 .reportedById(i.getReportedBy().getId())
                 .reportedByName(i.getReportedBy().getFullname())
+
+                // Resolver
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
