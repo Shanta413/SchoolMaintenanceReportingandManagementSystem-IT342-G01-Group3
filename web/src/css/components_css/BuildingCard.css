@@ -59,3 +59,91 @@
   padding-top: 0.875rem;
   border-top: 1px solid #e2e8f0;
 }
+
+/* ADMIN CARD ACTIONS */
+.admin-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.admin-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-action-btn.edit {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.admin-action-btn.edit:hover {
+  background: #c7d2fe;
+}
+
+.admin-action-btn.delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-action-btn.delete:hover {
+  background: #fecaca;
+}
+
+/* Make sure the card is positioned for absolute buttons */
+.admin-version {
+  position: relative;
+}
+/* Row for code + action buttons */
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Inline admin buttons */
+.admin-inline-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-inline-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+.admin-inline-btn.edit {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.admin-inline-btn.edit:hover {
+  background: #c7d2fe;
+}
+
+.admin-inline-btn.delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-inline-btn.delete:hover {
+  background: #fecaca;
+}
