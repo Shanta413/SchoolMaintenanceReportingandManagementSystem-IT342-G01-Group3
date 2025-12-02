@@ -3,11 +3,12 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import BuildingSelection from "./pages/BuildingSelection";
 import ProfilePage from "./pages/ProfilePage";
+import MyReports from "./pages/MyReports";
 
 // STAFF PAGES
 import AdminDashboard from "./pages/staff/AdminDashboard";
 import Dashboard from "./pages/staff/Dashboard";
-import Issues from "./pages/staff/Issues";   // ✅ Correct import name
+import Issues from "./pages/staff/Issues";
 import Users from "./pages/staff/Users";
 import AdminBuildingDetail from "./pages/staff/AdminBuildingDetail";
 
@@ -67,6 +68,16 @@ function App() {
           }
         />
 
+        {/* My Reports Route */}
+        <Route
+          path="/myreports"
+          element={
+            <ProtectedRoute allowedRoles={["STUDENT"]}>
+              <MyReports />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/buildings/:buildingCode"
           element={
@@ -95,11 +106,7 @@ function App() {
           }
         >
           <Route path="dashboard" element={<Dashboard />} />
-
-          {/* 🚨 FIXED: USE <Issues/> NOT <IssuesPage/> */}
           <Route path="issues" element={<Issues />} />
-
-          {/* Admin per-building */}
           <Route path="buildings/:buildingCode" element={<AdminBuildingDetail />} />
 
           {/* Admin-only Users page */}
