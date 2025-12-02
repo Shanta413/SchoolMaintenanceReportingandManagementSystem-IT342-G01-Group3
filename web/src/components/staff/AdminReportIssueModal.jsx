@@ -26,16 +26,51 @@ export default function AdminReportIssueModal({
     setTimeout(() => setToast(null), 2500);
   };
 
+  // Validate image file
+  const validateFile = (file) => {
+    if (!file) return null;
+
+    // Check file type
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      showToast("error", "Only PNG, JPG, and GIF images are allowed.");
+      return null;
+    }
+
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      showToast("error", "Image size must be less than 5MB.");
+      return null;
+    }
+
+    return file;
+  };
+
   const resetForm = () => {
     setTitle("");
     setPriority("");
     setDescription("");
     setLocation("");
     setFile(null);
+    if (fileInput.current) {
+      fileInput.current.value = "";
+    }
   };
 
   const handleFileUpload = (e) => {
-    setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    const validFile = validateFile(selectedFile);
+    
+    if (validFile) {
+      setFile(validFile);
+    } else {
+      // Clear the file input
+      e.target.value = "";
+      setFile(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -197,7 +232,7 @@ export default function AdminReportIssueModal({
             >
               <input
                 type="file"
-                accept="image/*"
+                accept="image/png,image/jpeg,image/jpg,image/gif"
                 ref={fileInput}
                 style={{ display: "none" }}
                 onChange={handleFileUpload}
@@ -209,9 +244,26 @@ export default function AdminReportIssueModal({
                   <p className="file-upload-text">
                     Click to <span className="highlight">upload an image</span>
                   </p>
+                  <div className="file-upload-hint">PNG, JPG, GIF up to 5MB</div>
                 </>
               ) : (
-                <p className="selected-file">📁 {file.name}</p>
+                <div className="selected-file">
+                  <span style={{ marginRight: '8px' }}>✓</span>
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    className="remove-file-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFile(null);
+                      if (fileInput.current) {
+                        fileInput.current.value = "";
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               )}
             </div>
           </div>
