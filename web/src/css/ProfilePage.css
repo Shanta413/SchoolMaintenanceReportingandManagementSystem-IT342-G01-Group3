@@ -419,3 +419,95 @@
     transform: translateX(120%);
   }
 }
+
+/* Add these styles to your existing ProfilePage.css file */
+
+/* Label with Info Icon */
+.label-with-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.info-icon {
+  color: #64748b;
+  transition: color 0.2s;
+}
+
+.info-icon-wrapper:hover .info-icon {
+  color: #2563eb;
+}
+
+/* Tooltip */
+.info-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  background: #1e293b;
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: normal;
+  width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+}
+
+.info-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #1e293b;
+}
+
+.info-icon-wrapper:hover .info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.info-tooltip strong {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .info-tooltip {
+    width: 240px;
+    font-size: 0.75rem;
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .info-tooltip {
+    left: auto;
+    right: 0;
+    transform: none;
+    width: 200px;
+  }
+  
+  .info-tooltip::before {
+    left: auto;
+    right: 8px;
+    transform: none;
+  }
+}

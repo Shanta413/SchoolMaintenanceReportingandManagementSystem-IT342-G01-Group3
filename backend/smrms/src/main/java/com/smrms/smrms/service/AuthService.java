@@ -70,8 +70,11 @@ public class AuthService {
         String jwtToken = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())              // ← ADD USER ID
                 .token(jwtToken)
                 .email(user.getEmail())
+                .fullname(user.getFullname())  // ← ADD FULLNAME
+                .avatarUrl(user.getAvatarUrl()) // ← ADD AVATAR
                 .role("STUDENT")
                 .message("Registered successfully")
                 .build();
@@ -103,8 +106,11 @@ public class AuthService {
         String jwtToken = jwtService.generateToken(user.getEmail());
 
         return AuthResponse.builder()
+                .id(user.getId())              // ← ADD USER ID
                 .token(jwtToken)
                 .email(user.getEmail())
+                .fullname(user.getFullname())  // ← ADD FULLNAME
+                .avatarUrl(user.getAvatarUrl()) // ← ADD AVATAR
                 .role(roleName)
                 .message("Login successful")
                 .build();

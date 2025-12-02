@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import Header from "../components/Header";
 import BuildingCard from "../components/BuildingCard";
@@ -7,52 +7,7 @@ import SearchBar from "../components/SearchBar";
 import FilterDropdown from "../components/FilterDropdown";
 import CampusMapModal from "../components/CampusMapModal";
 import "../css/BuildingSelection.css";
-import { useNavigate } from "react-router-dom";
-
-const mockBuildings = [
-  {
-    id: 1,
-    name: "SAL Building",
-    subtitle: "Science and Laboratory",
-    image: "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=300&fit=crop",
-    issues: { high: 8, medium: 10, low: 6 },
-  },
-  {
-    id: 2,
-    name: "Main Building",
-    subtitle: "Administration",
-    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop",
-    issues: { high: 5, medium: 8, low: 5 },
-  },
-  {
-    id: 3,
-    name: "Library Building",
-    subtitle: "Learning Resource Center",
-    image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=300&fit=crop",
-    issues: { high: 4, medium: 7, low: 4 },
-  },
-  {
-    id: 4,
-    name: "CBA Building",
-    subtitle: "College of Business Administration",
-    image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop",
-    issues: { high: 3, medium: 6, low: 3 },
-  },
-  {
-    id: 5,
-    name: "Cafeteria",
-    subtitle: "Student Dining Hall",
-    image: "https://images.unsplash.com/photo-1567521464027-f127ff144326?w=400&h=300&fit=crop",
-    issues: { high: 2, medium: 4, low: 3 },
-  },
-  {
-    id: 6,
-    name: "Campus Grounds",
-    subtitle: "Outdoor Areas & Facilities",
-    image: "https://images.unsplash.com/photo-1592280771190-3e2e4d571952?w=400&h=300&fit=crop",
-    issues: { high: 6, medium: 9, low: 5 },
-  },
-];
+import { getAllBuildings } from "../api/building";
 
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
@@ -66,65 +21,76 @@ function BuildingSelection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [showMapModal, setShowMapModal] = useState(false);
+  const [buildings, setBuildings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // 🟢 Capture token from URL and store in localStorage
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (token) {
-      localStorage.setItem("authToken", token);
-      window.history.replaceState({}, "", "/buildings");
-    }
-
-    const existingToken = localStorage.getItem("authToken");
-    if (!existingToken) navigate("/login"); // redirect if not logged in
-  }, [navigate]);
-
-  // 🟢 Setup Axios Authorization header
+  // 🟢 Auth check
   useEffect(() => {
     const token = localStorage.getItem("authToken");
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    }
+    if (!token) navigate("/login");
+  }, [navigate]);
+
+  // 🟢 Fetch buildings from backend (only active buildings)
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getAllBuildings()
+      .then((data) => {
+        // Only show active buildings (admin-created)
+        setBuildings(data.filter((b) => b.buildingIsActive !== false));
+      })
+      .catch((err) => {
+        setError("Failed to load buildings.");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  // Filter logic
+  // 🟢 Filter logic (by name/code, and sorting)
   const filteredBuildings = useMemo(() => {
-    let filtered = mockBuildings.filter(
-      (building) =>
-        building.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        building.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+    let filtered = buildings.filter(
+      (b) =>
+        (b.buildingName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (b.buildingCode || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (priorityFilter) {
       filtered = [...filtered].sort((a, b) => {
-        const totalA = a.issues.high + a.issues.medium + a.issues.low;
-        const totalB = b.issues.high + b.issues.medium + b.issues.low;
+        const aTotal =
+          (a.issueCount?.high || 0) +
+          (a.issueCount?.medium || 0) +
+          (a.issueCount?.low || 0);
+        const bTotal =
+          (b.issueCount?.high || 0) +
+          (b.issueCount?.medium || 0) +
+          (b.issueCount?.low || 0);
 
         switch (priorityFilter) {
           case "highest":
-            return totalB - totalA;
+            return bTotal - aTotal;
           case "lowest":
-            return totalA - totalB;
+            return aTotal - bTotal;
           case "high-priority":
-            return b.issues.high - a.issues.high;
+            return (b.issueCount?.high || 0) - (a.issueCount?.high || 0);
           case "medium-priority":
-            return b.issues.medium - a.issues.medium;
+            return (b.issueCount?.medium || 0) - (a.issueCount?.medium || 0);
           case "low-priority":
-            return b.issues.low - a.issues.low;
+            return (b.issueCount?.low || 0) - (a.issueCount?.low || 0);
           default:
             return 0;
         }
       });
     }
-    return filtered;
-  }, [searchQuery, priorityFilter]);
 
+    return filtered;
+  }, [searchQuery, priorityFilter, buildings]);
+
+  // 👇 Use buildingCode for navigation (not id)
   const handleBuildingClick = (building) => {
-    console.log("Building clicked:", building);
-    // In future → navigate(`/building/${building.id}`);
+    if (building.buildingCode) {
+      navigate(`/buildings/${building.buildingCode}`);
+    }
   };
 
   return (
@@ -133,7 +99,9 @@ function BuildingSelection() {
       <main className="main-content">
         <div className="content-wrapper">
           <h1 className="page-title">Select Building</h1>
-          <p className="page-subtitle">Choose a building to view and report issues</p>
+          <p className="page-subtitle">
+            Choose a building to view and report issues
+          </p>
 
           <button className="map-link" onClick={() => setShowMapModal(true)}>
             <MapPin size={16} />
@@ -154,20 +122,36 @@ function BuildingSelection() {
             />
           </div>
 
-          <div className="buildings-grid">
-            {filteredBuildings.map((building) => (
-              <BuildingCard key={building.id} building={building} onClick={handleBuildingClick} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="loading-state">Loading buildings...</div>
+          ) : error ? (
+            <div className="error-banner">{error}</div>
+          ) : (
+            <div className="buildings-grid">
+              {filteredBuildings.length === 0 ? (
+                <div className="no-results">
+                  <p>No buildings found matching your search.</p>
+                </div>
+              ) : (
+                filteredBuildings.map((b) => (
+                  <BuildingCard
+  key={b.id}
+  building={{
+    id: b.id,
+    name: b.buildingName,      // <-- This is name (smaller, below)
+    subtitle: b.buildingCode,  // <-- This is CODE (should be on top, bigger)
+    image: b.buildingImageUrl,
+    issues: b.issueCount || { high: 0, medium: 0, low: 0 },
+  }}
+  onClick={() => handleBuildingClick(b)}
+/>
 
-          {filteredBuildings.length === 0 && (
-            <div className="no-results">
-              <p>No buildings found matching your search.</p>
+                ))
+              )}
             </div>
           )}
         </div>
       </main>
-
       <CampusMapModal isOpen={showMapModal} onClose={() => setShowMapModal(false)} />
     </div>
   );

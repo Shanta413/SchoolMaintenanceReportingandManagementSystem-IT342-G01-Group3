@@ -51,7 +51,9 @@ public class StudentController {
                 s.getStudentDepartment(),
                 s.getStudentIdNumber(),
                 "",                 // password placeholder
-                u.getAvatarUrl()    // ✅ new field
+                u.getAvatarUrl(), // ✅ new field
+                u.getAuthMethod()
+
         );
 
         return ResponseEntity.ok(dto);
@@ -102,18 +104,22 @@ public class StudentController {
         Student student = existing.get();
         User user = student.getUser();
 
+
         // ✅ Update user details
         if (dto.getFullname() != null) user.setFullname(dto.getFullname());
+        if (dto.getEmail() != null) user.setEmail(dto.getEmail());
         if (dto.getMobileNumber() != null) user.setMobileNumber(dto.getMobileNumber());
         if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
         userRepository.save(user);
+        userRepository.flush(); // <-- FORCE FLUSH
 
         // ✅ Update student details
         if (dto.getStudentDepartment() != null) student.setStudentDepartment(dto.getStudentDepartment());
         if (dto.getStudentIdNumber() != null) student.setStudentIdNumber(dto.getStudentIdNumber());
         studentRepository.save(student);
+        studentRepository.flush(); // <-- (optional but safe)
 
         return ResponseEntity.ok("Student updated successfully");
     }

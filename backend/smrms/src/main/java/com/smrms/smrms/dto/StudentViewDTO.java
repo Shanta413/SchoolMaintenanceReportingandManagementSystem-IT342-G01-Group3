@@ -1,9 +1,6 @@
 package com.smrms.smrms.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
@@ -16,7 +13,7 @@ public class StudentViewDTO {
     private String mobileNumber;
     private String studentDepartment;
     private String studentIdNumber;
-    private String password; // ✅ Added for auto-create users
-    private String avatarUrl; // ✅ Add this
-
+    private String password;   // <-- This is #7
+    private String avatarUrl;
+    private String authMethod;
 }

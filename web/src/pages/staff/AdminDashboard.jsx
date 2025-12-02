@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import CitfixLogo from "../../components/CitfixLogo"; // Adjust the path based on your folder structure
 import "../../css/AdminDashboard.css";
 
 function AdminDashboard() {
@@ -20,7 +21,7 @@ function AdminDashboard() {
       <aside className="admin-sidebar">
         <div className="sidebar-header">
           <div className="logo">
-            <span className="logo-icon">✓</span>
+            <CitfixLogo variant="icon" size="sm" />
             <span className="logo-text">CITFIX</span>
           </div>
           <p className="sidebar-subtitle">{subtitle}</p>
