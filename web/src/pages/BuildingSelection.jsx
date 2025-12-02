@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-
 import Header from "../components/Header";
 import BuildingCard from "../components/BuildingCard";
 import SearchBar from "../components/SearchBar";
@@ -23,7 +21,9 @@ function BuildingSelection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [showMapModal, setShowMapModal] = useState(false);
-
+  const [buildings, setBuildings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // 🟢 Auth check
@@ -32,35 +32,27 @@ function BuildingSelection() {
     if (!token) navigate("/login");
   }, [navigate]);
 
-  // 🟢 React Query: fetch + cache buildings
-  const {
-    data: buildings = [],
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
-    queryKey: ["buildings"],
-    queryFn: async () => {
-      const data = await getAllBuildings();
-      // Only active buildings (admin-created)
-      return data.filter((b) => b.buildingIsActive !== false);
-    },
-    // Cache config (tune for Railway)
-    staleTime: 60 * 1000, // 1 minute
-    cacheTime: 24 * 60 * 60 * 1000, // 1 day
-    refetchOnWindowFocus: false,
-  });
+  // 🟢 Fetch buildings from backend (only active buildings)
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getAllBuildings()
+      .then((data) => {
+        // Only show active buildings (admin-created)
+        setBuildings(data.filter((b) => b.buildingIsActive !== false));
+      })
+      .catch((err) => {
+        setError("Failed to load buildings.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   // 🟢 Filter logic (by name/code, and sorting)
   const filteredBuildings = useMemo(() => {
     let filtered = buildings.filter(
       (b) =>
-        (b.buildingName || "")
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        (b.buildingCode || "")
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())
+        (b.buildingName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (b.buildingCode || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (priorityFilter) {
@@ -130,12 +122,10 @@ function BuildingSelection() {
             />
           </div>
 
-          {isLoading ? (
+          {loading ? (
             <div className="loading-state">Loading buildings...</div>
-          ) : isError ? (
-            <div className="error-banner">
-              {error?.message || "Failed to load buildings."}
-            </div>
+          ) : error ? (
+            <div className="error-banner">{error}</div>
           ) : (
             <div className="buildings-grid">
               {filteredBuildings.length === 0 ? (
@@ -145,31 +135,24 @@ function BuildingSelection() {
               ) : (
                 filteredBuildings.map((b) => (
                   <BuildingCard
-                    key={b.id}
-                    building={{
-                      id: b.id,
-                      name: b.buildingName,      // smaller below
-                      subtitle: b.buildingCode,  // big code on top
-                      image: b.buildingImageUrl,
-                      issues: b.issueCount || {
-                        high: 0,
-                        medium: 0,
-                        low: 0,
-                      },
-                    }}
-                    onClick={() => handleBuildingClick(b)}
-                  />
+  key={b.id}
+  building={{
+    id: b.id,
+    name: b.buildingName,      // <-- This is name (smaller, below)
+    subtitle: b.buildingCode,  // <-- This is CODE (should be on top, bigger)
+    image: b.buildingImageUrl,
+    issues: b.issueCount || { high: 0, medium: 0, low: 0 },
+  }}
+  onClick={() => handleBuildingClick(b)}
+/>
+
                 ))
               )}
             </div>
           )}
         </div>
       </main>
-
-      <CampusMapModal
-        isOpen={showMapModal}
-        onClose={() => setShowMapModal(false)}
-      />
+      <CampusMapModal isOpen={showMapModal} onClose={() => setShowMapModal(false)} />
     </div>
   );
 }
