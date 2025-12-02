@@ -8,6 +8,7 @@ import {
   User,
   ArrowLeft,
   Upload,
+  Info,
 } from "lucide-react";
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
@@ -332,7 +333,16 @@ const ProfilePage = () => {
               </div>
 
               <div className="form-group">
-                <label>Email Address</label>
+                <label className="label-with-info">
+                  Email Address
+                  <div className="info-icon-wrapper">
+                    <Info size={16} className="info-icon" />
+                    <div className="info-tooltip">
+                      To change your email, please contact the administrator at{" "}
+                      <strong>jaysoncan413@gmail.com</strong>. Email changes require verification for security purposes.
+                    </div>
+                  </div>
+                </label>
                 <div className="icon-input">
                   <Mail size={16} />
                   <input
