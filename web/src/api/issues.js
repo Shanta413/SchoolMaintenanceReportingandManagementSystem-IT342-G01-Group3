@@ -19,18 +19,18 @@ export async function getIssueById(issueId) {
   return data;
 }
 
-// 🔹 Create issue (photo optional)
-export async function createIssue(issueData, photoFile = null) {
+// 🔹 Create issue (photo and/or file optional)
+export async function createIssue(issueData, photoFile = null, reportFile = null) {
   const formData = new FormData();
 
+  // Attach the JSON payload as "data"
   formData.append(
     "data",
     new Blob([JSON.stringify(issueData)], { type: "application/json" })
   );
 
-  if (photoFile) {
-    formData.append("photo", photoFile);
-  }
+  if (photoFile) formData.append("photo", photoFile);
+  if (reportFile) formData.append("file", reportFile);
 
   const { data } = await api.post("/issues", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -39,13 +39,8 @@ export async function createIssue(issueData, photoFile = null) {
   return data;
 }
 
-// 🔹 Update issue (photo or resolution PDF optional)
-export async function updateIssue(
-  issueId,
-  updateData,
-  photoFile = null,
-  resolutionFile = null
-) {
+// 🔹 Update issue (photo and/or file optional, as per backend)
+export async function updateIssue(issueId, updateData, photoFile = null, resolutionFile = null) {
   const formData = new FormData();
 
   formData.append(
@@ -53,12 +48,8 @@ export async function updateIssue(
     new Blob([JSON.stringify(updateData)], { type: "application/json" })
   );
 
-  if (photoFile) {
-    formData.append("photo", photoFile);
-  }
-  if (resolutionFile) {
-    formData.append("file", resolutionFile);
-  }
+  if (photoFile) formData.append("photo", photoFile);
+  if (resolutionFile) formData.append("file", resolutionFile);
 
   const { data } = await api.put(`/issues/${issueId}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },

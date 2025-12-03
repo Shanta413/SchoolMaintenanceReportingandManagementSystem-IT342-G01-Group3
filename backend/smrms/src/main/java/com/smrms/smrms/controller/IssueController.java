@@ -51,7 +51,7 @@ public class IssueController {
             @PathVariable String id,
             Authentication auth,
             @RequestPart("data") IssueUpdateRequest req,
-            @RequestPart(value = "file", required = false) MultipartFile file
+            @RequestPart(value = "file", required = false) MultipartFile file // <-- must match FE
     ) throws Exception {
         return issueService.updateIssue(id, req, auth.getName(), file);
     }
