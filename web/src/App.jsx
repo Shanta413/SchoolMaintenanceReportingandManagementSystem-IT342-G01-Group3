@@ -19,19 +19,29 @@ import ReportIssue from "./pages/ReportIssue";
 import "./App.css";
 
 /**
- * ProtectedRoute
+ * ProtectedRoute - Generic authentication check
  */
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem("authToken");
   const role = localStorage.getItem("userRole");
 
-  if (!token) return <Navigate to="/login" replace />;
+  // No token = redirect to login
+  if (!token) {
+    console.log("⛔ No token found, redirecting to login");
+    return <Navigate to="/login" replace />;
+  }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    if (role === "ADMIN" || role === "MAINTENANCE_STAFF") {
-      return <Navigate to="/staff/dashboard" replace />;
+  // If allowedRoles specified, check role
+  if (allowedRoles && allowedRoles.length > 0) {
+    if (!allowedRoles.includes(role)) {
+      console.log(`⛔ Role "${role}" not allowed for this route. Allowed: ${allowedRoles.join(", ")}`);
+      
+      // Redirect based on role
+      if (role === "ADMIN" || role === "MAINTENANCE_STAFF") {
+        return <Navigate to="/staff/issues" replace />;
+      }
+      return <Navigate to="/buildings" replace />;
     }
-    return <Navigate to="/buildings" replace />;
   }
 
   return children;
@@ -41,7 +51,6 @@ function App() {
   return (
     <Router>
       <Routes>
-
         {/* Default */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -49,7 +58,11 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Student Area */}
+        {/* ===================================== */}
+        {/* STUDENT-ONLY ROUTES                  */}
+        {/* ===================================== */}
+        
+        {/* Student Buildings List */}
         <Route
           path="/buildings"
           element={
@@ -59,16 +72,27 @@ function App() {
           }
         />
 
+        {/* Student Building Detail */}
         <Route
-          path="/profile"
+          path="/buildings/:buildingCode"
           element={
-            <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
-              <ProfilePage />
+            <ProtectedRoute allowedRoles={["STUDENT"]}>
+              <BuildingDetail />
             </ProtectedRoute>
           }
         />
 
-        {/* My Reports Route */}
+        {/* Student Report Issue */}
+        <Route
+          path="/buildings/ReportIssue"
+          element={
+            <ProtectedRoute allowedRoles={["STUDENT"]}>
+              <ReportIssue />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Student My Reports */}
         <Route
           path="/myreports"
           element={
@@ -78,25 +102,20 @@ function App() {
           }
         />
 
+        {/* Student Profile - STUDENTS ONLY */}
         <Route
-          path="/buildings/:buildingCode"
+          path="/profile"
           element={
-            <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
-              <BuildingDetail />
+            <ProtectedRoute allowedRoles={["STUDENT"]}>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
 
-        <Route
-          path="/buildings/ReportIssue"
-          element={
-            <ProtectedRoute allowedRoles={["STUDENT", "ADMIN", "MAINTENANCE_STAFF"]}>
-              <ReportIssue />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* STAFF & ADMIN AREA */}
+        {/* ===================================== */}
+        {/* STAFF & ADMIN ROUTES                 */}
+        {/* ===================================== */}
+        
         <Route
           path="/staff"
           element={
@@ -105,9 +124,35 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="issues" element={<Issues />} />
-          <Route path="buildings/:buildingCode" element={<AdminBuildingDetail />} />
+          {/* Staff Dashboard */}
+          <Route 
+            path="dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MAINTENANCE_STAFF"]}>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Staff Issues */}
+          <Route 
+            path="issues" 
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MAINTENANCE_STAFF"]}>
+                <Issues />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Staff Building Detail */}
+          <Route 
+            path="buildings/:buildingCode" 
+            element={
+              <ProtectedRoute allowedRoles={["ADMIN", "MAINTENANCE_STAFF"]}>
+                <AdminBuildingDetail />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Admin-only Users page */}
           <Route
@@ -120,7 +165,7 @@ function App() {
           />
         </Route>
 
-        {/* Catch All */}
+        {/* Catch All - Redirect unknown routes */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

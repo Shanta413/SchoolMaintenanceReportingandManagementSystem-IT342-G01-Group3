@@ -27,6 +27,7 @@ export default function AdminBuildingDetail() {
 
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
 
   // Modals
   const [selectedIssue, setSelectedIssue] = useState(null);
@@ -80,19 +81,32 @@ export default function AdminBuildingDetail() {
   const fetchIssues = useCallback(() => {
     if (!building?.id) return;
 
-    setIssuesLoading(true);
+    // Only show loading spinner on initial load
+    if (isInitialLoad) {
+      setIssuesLoading(true);
+    }
+
     getIssuesByBuilding(building.id)
       .then((data) => {
         setIssues(data);
         console.log("✅ Issues loaded:", data.length);
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
       })
       .catch((err) => {
         console.error("❌ Failed to load issues:", err);
         setIssues([]);
-        showToast("error", "Failed to load issues");
+        if (isInitialLoad) {
+          showToast("error", "Failed to load issues");
+        }
       })
-      .finally(() => setIssuesLoading(false));
-  }, [building]);
+      .finally(() => {
+        if (isInitialLoad) {
+          setIssuesLoading(false);
+        }
+      });
+  }, [building, isInitialLoad]);
 
   useEffect(() => {
     fetchIssues();
@@ -220,6 +234,8 @@ export default function AdminBuildingDetail() {
       setShowModal(false);
       setSelectedIssue(null);
 
+      // Mark as initial load to show loading on manual refresh
+      setIsInitialLoad(true);
       // Refresh issues list
       fetchIssues();
     } catch (error) {
@@ -242,6 +258,8 @@ export default function AdminBuildingDetail() {
   };
 
   const handleIssueCreated = () => {
+    // Mark as initial load to show loading on manual refresh
+    setIsInitialLoad(true);
     fetchIssues();
     showToast("success", "Issue reported successfully");
   };

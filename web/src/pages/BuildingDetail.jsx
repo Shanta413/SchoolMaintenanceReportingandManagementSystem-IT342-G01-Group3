@@ -11,7 +11,7 @@ import UserActiveIssueModal from "../components/UserActiveIssueModal";
 import "../css/BuildingDetails.css";
 import "../css/components_css/UserActiveIssueModal.css";
 
-import useAutoRefresh from "../hooks/useAutoRefresh"; // 🔥 Auto-refresh hook
+import useAutoRefresh from "../hooks/useAutoRefresh";
 
 export default function BuildingDetail() {
   const { buildingCode } = useParams();
@@ -27,36 +27,74 @@ export default function BuildingDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
   const [modalIssue, setModalIssue] = useState(null);
 
-  // 🟣 Fetch building ONCE
+  // Toast notification
+  const [toast, setToast] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toast helper
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ================================
+  // FETCH BUILDING (ONCE)
+  // ================================
   useEffect(() => {
     setLoading(true);
     setError("");
 
     getBuildingByCode(buildingCode)
-      .then((data) => setBuilding(data))
+      .then((data) => {
+        setBuilding(data);
+        console.log("✅ Building loaded:", data);
+      })
       .catch((err) => {
-        setError(
+        const errorMsg =
           err?.response?.data?.message ||
-            "Building not found. Please check the code or go back."
-        );
+          "Building not found. Please check the code or go back.";
+        setError(errorMsg);
+        console.error("❌ Failed to load building:", err);
       })
       .finally(() => setLoading(false));
   }, [buildingCode]);
 
-  // 🟣 Fetch issues function (wrapped in useCallback for auto-refresh stability)
+  // ================================
+  // FETCH ISSUES (AUTO-REFRESH SAFE)
+  // ================================
   const fetchIssues = useCallback(() => {
-    if (!building) return;
+    if (!building?.id) return;
 
-    setIssuesLoading(true);
+    // Only show loading spinner on initial load
+    if (isInitialLoad) {
+      setIssuesLoading(true);
+    }
+
     getIssuesByBuilding(building.id)
-      .then((data) => setIssues(data))
-      .catch(() => setIssues([]))
-      .finally(() => setIssuesLoading(false));
-  }, [building]);
+      .then((data) => {
+        setIssues(data);
+        console.log("✅ Issues loaded:", data.length);
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load issues:", err);
+        setIssues([]);
+        if (isInitialLoad) {
+          showToast("error", "Failed to load issues");
+        }
+      })
+      .finally(() => {
+        if (isInitialLoad) {
+          setIssuesLoading(false);
+        }
+      });
+  }, [building, isInitialLoad]);
 
-  // 🟣 Fetch issues on load
   useEffect(() => {
     fetchIssues();
   }, [fetchIssues]);
@@ -64,7 +102,9 @@ export default function BuildingDetail() {
   // 🔥 AUTO-REFRESH ISSUES EVERY 3 SECONDS
   useAutoRefresh(fetchIssues, 3000, true);
 
-  // 🟣 Utilities
+  // ================================
+  // PRIORITY COLORS
+  // ================================
   const getPriorityColor = (priority) => {
     switch ((priority || "").toUpperCase()) {
       case "HIGH":
@@ -81,7 +121,9 @@ export default function BuildingDetail() {
   const isResolvedStatus = (status) =>
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
-  // 🟣 Filtering logic
+  // ================================
+  // FILTERING + COUNTS
+  // ================================
   const filteredIssues = issues.filter((issue) => {
     const isActive = !isResolvedStatus(issue.issueStatus);
     const matchesTab = activeTab === "active" ? isActive : !isActive;
@@ -115,7 +157,37 @@ export default function BuildingDetail() {
     (i) => i.issuePriority === "LOW" && !isResolvedStatus(i.issueStatus)
   ).length;
 
-  // 🟣 LOADING / ERROR STATES
+  // ================================
+  // DELETE HANDLER
+  // ================================
+  const handleDelete = async (issueId, e) => {
+    e.stopPropagation();
+    
+    if (!window.confirm("Are you sure you want to delete this issue?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    console.log("🗑️ Deleting issue:", issueId);
+
+    try {
+      await deleteIssue(issueId);
+      setIssues((prev) => prev.filter((i) => i.id !== issueId));
+      console.log("✅ Issue deleted successfully");
+      showToast("success", "Issue deleted successfully");
+    } catch (error) {
+      console.error("❌ Failed to delete issue:", error);
+      const errorMsg =
+        error?.response?.data?.message || "Failed to delete issue. Please try again.";
+      showToast("error", errorMsg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ================================
+  // LOADING / ERROR UI
+  // ================================
   if (loading) {
     return (
       <div className="loading-container">
@@ -138,6 +210,31 @@ export default function BuildingDetail() {
 
   return (
     <div className="building-detail-page">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="toast-container" style={{
+          position: "fixed",
+          top: 20,
+          right: 20,
+          zIndex: 9999
+        }}>
+          <div className={`toast toast-${toast.type}`} style={{
+            padding: "12px 20px",
+            borderRadius: 8,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            background: toast.type === "success" ? "#10b981" :
+                       toast.type === "error" ? "#ef4444" :
+                       toast.type === "warning" ? "#f59e0b" : "#3b82f6",
+            color: "#fff",
+            fontWeight: 500,
+            minWidth: 250,
+            animation: "slideIn 0.3s ease"
+          }}>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <Header userName="Student" />
 
       {/* HEADER BANNER */}
@@ -353,23 +450,20 @@ export default function BuildingDetail() {
                                 }
                               });
                             }}
+                            title="Edit Issue"
                           >
                             <Edit2 size={16} />
                           </button>
 
                           <button
                             className="admin-inline-btn delete"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (window.confirm("Delete this issue?")) {
-                                try {
-                                  await deleteIssue(issue.id);
-                                  setIssues((prev) => prev.filter((i) => i.id !== issue.id));
-                                } catch (err) {
-                                  alert("Failed to delete issue.");
-                                }
-                              }
+                            onClick={(e) => handleDelete(issue.id, e)}
+                            disabled={isDeleting}
+                            style={{
+                              cursor: isDeleting ? "not-allowed" : "pointer",
+                              opacity: isDeleting ? 0.5 : 1
                             }}
+                            title="Delete Issue"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -402,6 +496,19 @@ export default function BuildingDetail() {
           />
         )}
       </main>
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
