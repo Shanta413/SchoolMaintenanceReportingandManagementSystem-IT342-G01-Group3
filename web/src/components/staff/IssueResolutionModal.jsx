@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { getAllStaff } from "../../api/staff";
 import "../../css/IssueResolutionModal.css";
 
@@ -11,7 +11,7 @@ const PRIORITY_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: "ACTIVE", label: "Active" },
-  { value: "FIXED", label: "Resolved" }, // Backend value is FIXED
+  { value: "FIXED", label: "Resolved" },
 ];
 
 // Allowed MIME types for upload
@@ -28,6 +28,8 @@ export default function IssueResolutionModal({
   issue = {},
   isEditing = false,
   onDelete,
+  isSaving = false,
+  isDeleting = false,
 }) {
   const [form, setForm] = useState({
     issueTitle: "",
@@ -37,8 +39,10 @@ export default function IssueResolutionModal({
     issueLocation: "",
     exactLocation: "",
     resolvedByStaffId: "",
+    buildingCode: "", // For display purposes
   });
   const [staffList, setStaffList] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const [showPhoto, setShowPhoto] = useState(false);
@@ -46,8 +50,7 @@ export default function IssueResolutionModal({
 
   useEffect(() => {
     if (isOpen) {
-      // Debug: show full issue object from parent/API
-      console.log("Issue object from props (API):", issue);
+      console.log("📋 Issue object from props (API):", issue);
 
       setForm({
         issueTitle: issue.issueTitle || "",
@@ -57,15 +60,27 @@ export default function IssueResolutionModal({
         issueLocation: issue.issueLocation || "",
         exactLocation: issue.exactLocation || "",
         resolvedByStaffId: issue.resolvedByStaffId || "",
+        buildingCode: issue.buildingCode || "", // Store building code
       });
       setUploadFile(null);
       setFileError("");
       setToast(null);
-      getAllStaff().then(staffArr => {
-        // Debug: see what staff the API is giving you
-        console.log("Staff List from API:", staffArr);
-        setStaffList(staffArr || []);
-      });
+
+      // Load staff list
+      setStaffLoading(true);
+      getAllStaff()
+        .then((staffArr) => {
+          console.log("👥 Staff List from API:", staffArr);
+          setStaffList(staffArr || []);
+        })
+        .catch((err) => {
+          console.error("❌ Failed to load staff:", err);
+          showToast("error", "Failed to load staff list");
+          setStaffList([]);
+        })
+        .finally(() => {
+          setStaffLoading(false);
+        });
     }
   }, [isOpen, issue]);
 
@@ -78,7 +93,6 @@ export default function IssueResolutionModal({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    // Debug: Log every change in form
     console.log(`[Form Change] ${name}:`, value);
   };
 
@@ -86,16 +100,16 @@ export default function IssueResolutionModal({
   const validateFile = (file) => {
     if (!file) return null;
 
-    console.log("[File Upload] Attempting to upload:", file);
-    console.log("[File Upload] File type:", file.type);
-    console.log("[File Upload] File size:", file.size);
+    console.log("📎 [File Upload] Attempting to upload:", file.name);
+    console.log("📎 [File Upload] File type:", file.type);
+    console.log("📎 [File Upload] File size:", (file.size / 1024 / 1024).toFixed(2), "MB");
 
     // Check file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       const errorMsg = "Only PDF, DOC, or DOCX files are allowed.";
       setFileError(errorMsg);
       showToast("error", errorMsg);
-      console.log("[File Upload] Invalid file type:", file.type);
+      console.log("❌ [File Upload] Invalid file type:", file.type);
       return null;
     }
 
@@ -104,11 +118,11 @@ export default function IssueResolutionModal({
       const errorMsg = "Max file size is 10MB.";
       setFileError(errorMsg);
       showToast("error", errorMsg);
-      console.log("[File Upload] File too large:", file.size);
+      console.log("❌ [File Upload] File too large:", (file.size / 1024 / 1024).toFixed(2), "MB");
       return null;
     }
 
-    console.log("[File Upload] File accepted:", file);
+    console.log("✅ [File Upload] File accepted:", file.name);
     return file;
   };
 
@@ -118,10 +132,11 @@ export default function IssueResolutionModal({
     if (!file) return;
 
     const validFile = validateFile(file);
-    
+
     if (validFile) {
       setUploadFile(validFile);
       setFileError("");
+      showToast("success", `File "${validFile.name}" ready to upload`);
     } else {
       // Clear the file input
       e.target.value = "";
@@ -130,13 +145,14 @@ export default function IssueResolutionModal({
   };
 
   const handleSubmit = () => {
-    // 🟢 DEBUG: Log what you're about to send to the API
     console.log("🟢 Will call onSave with:", form, uploadFile);
 
+    // Validation
     if (!form.issueTitle || !form.issuePriority || !form.issueStatus) {
       showToast("error", "Please fill all required fields (title, priority, status)");
       return;
     }
+
     if (form.issueStatus === "FIXED" && !form.resolvedByStaffId) {
       showToast("error", "Select the staff/group who resolved the issue.");
       return;
@@ -148,7 +164,28 @@ export default function IssueResolutionModal({
       return;
     }
 
+    // Warn if status is FIXED but no file uploaded
+    if (form.issueStatus === "FIXED" && !uploadFile && !issue.resolutionFileUrl) {
+      const confirmSubmit = window.confirm(
+        "No resolution report uploaded. Are you sure you want to continue?"
+      );
+      if (!confirmSubmit) return;
+    }
+
     onSave(form, uploadFile); // Pass as separate arguments!
+  };
+
+  const handleDeleteClick = () => {
+    if (isDeleting) return;
+    onDelete();
+  };
+
+  const handleCloseClick = () => {
+    if (isSaving) {
+      showToast("warning", "Please wait, saving in progress...");
+      return;
+    }
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -157,8 +194,23 @@ export default function IssueResolutionModal({
     <>
       {/* Toast Notification */}
       {toast && (
-        <div className="toast-container">
-          <div className={`toast toast-${toast.type}`}>
+        <div className="toast-container" style={{
+          position: "fixed",
+          top: 20,
+          right: 20,
+          zIndex: 10000
+        }}>
+          <div className={`toast toast-${toast.type}`} style={{
+            padding: "12px 20px",
+            borderRadius: 8,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            background: toast.type === "success" ? "#10b981" :
+                       toast.type === "error" ? "#ef4444" :
+                       toast.type === "warning" ? "#f59e0b" : "#3b82f6",
+            color: "#fff",
+            fontWeight: 500,
+            minWidth: 250
+          }}>
             {toast.message}
           </div>
         </div>
@@ -166,7 +218,13 @@ export default function IssueResolutionModal({
 
       <div className="modal-backdrop">
         <div className="modal-box" style={{ minWidth: 540, maxWidth: 640 }}>
-          <button className="modal-close-btn" onClick={onClose} aria-label="Close modal">
+          <button 
+            className="modal-close-btn" 
+            onClick={handleCloseClick} 
+            aria-label="Close modal"
+            disabled={isSaving}
+            style={{ cursor: isSaving ? "not-allowed" : "pointer" }}
+          >
             <X />
           </button>
           <h2 className="modal-title">{isEditing ? "Edit Issue" : "Resolve Issue"}</h2>
@@ -187,8 +245,27 @@ export default function IssueResolutionModal({
                 }}
                 onClick={() => setShowPhoto(true)}
               >
-                View Issue Photo
+                📷 View Issue Photo
               </button>
+            </div>
+          )}
+
+          {/* Existing Resolution File Link */}
+          {issue.resolutionFileUrl && (
+            <div style={{ marginBottom: 10 }}>
+              <a
+                href={issue.resolutionFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#16a34a",
+                  textDecoration: "underline",
+                  fontSize: "1rem",
+                  fontWeight: 500
+                }}
+              >
+                📄 View Existing Resolution Report
+              </a>
             </div>
           )}
 
@@ -266,6 +343,7 @@ export default function IssueResolutionModal({
               onChange={handleChange}
               placeholder="Enter issue title"
               required
+              disabled={isSaving}
             />
 
             {/* --- Priority & Status --- */}
@@ -281,6 +359,7 @@ export default function IssueResolutionModal({
                   value={form.issuePriority}
                   onChange={handleChange}
                   required
+                  disabled={isSaving}
                 >
                   {PRIORITY_OPTIONS.map(opt => (
                     <option value={opt.value} key={opt.value}>{opt.label}</option>
@@ -298,6 +377,7 @@ export default function IssueResolutionModal({
                   value={form.issueStatus}
                   onChange={handleChange}
                   required
+                  disabled={isSaving}
                 >
                   {STATUS_OPTIONS.map(opt => (
                     <option value={opt.value} key={opt.value}>{opt.label}</option>
@@ -318,6 +398,7 @@ export default function IssueResolutionModal({
               onChange={handleChange}
               placeholder="Describe the issue..."
               rows={2}
+              disabled={isSaving}
             />
 
             {/* --- Location --- */}
@@ -330,9 +411,15 @@ export default function IssueResolutionModal({
                   id="issue-location"
                   name="issueLocation"
                   className="modal-input"
-                  value={form.issueLocation}
+                  value={form.buildingCode || form.issueLocation}
                   onChange={handleChange}
-                  placeholder="e.g., SAL Building"
+                  placeholder="Building code"
+                  disabled={true}
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    cursor: "not-allowed",
+                    color: "#6b7280"
+                  }}
                 />
               </div>
               <div>
@@ -346,6 +433,7 @@ export default function IssueResolutionModal({
                   value={form.exactLocation}
                   onChange={handleChange}
                   placeholder="e.g., 3rd Floor, Room 301"
+                  disabled={isSaving}
                 />
               </div>
             </div>
@@ -355,7 +443,7 @@ export default function IssueResolutionModal({
               <h4 style={{ color: "#16a34a", margin: 0, fontWeight: 600 }}>
                 Resolution Details
               </h4>
-              {/* 👇 Sample Report Format link here */}
+              {/* Sample Report Format link */}
               <a
                 href="https://docs.google.com/document/d/1iE7c7MKJDMSBsEBorRmOHl_R8SpuI04YTF0eq1DQLVw/edit?usp=sharing"
                 target="_blank"
@@ -382,9 +470,11 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 value={form.resolvedByStaffId}
                 onChange={handleChange}
-                disabled={form.issueStatus !== "FIXED"}
+                disabled={form.issueStatus !== "FIXED" || isSaving || staffLoading}
               >
-                <option value="">Select staff/group</option>
+                <option value="">
+                  {staffLoading ? "Loading staff..." : "Select staff/group"}
+                </option>
                 {staffList.map((staff) => (
                   <option key={staff.id} value={staff.userId}>
                     {staff.fullname} ({staff.staffId})
@@ -401,14 +491,14 @@ export default function IssueResolutionModal({
                 className="modal-input"
                 onChange={handleFileChange}
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                disabled={form.issueStatus !== "FIXED"}
+                disabled={form.issueStatus !== "FIXED" || isSaving}
               />
               {fileError && (
                 <div style={{ color: "#dc2626", fontSize: 13, marginTop: 2 }}>{fileError}</div>
               )}
               {uploadFile && (
                 <div style={{ marginTop: 8, color: "#16a34a", fontSize: 14 }}>
-                  ✓ {uploadFile.name}
+                  ✓ {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
                 </div>
               )}
             </div>
@@ -416,19 +506,60 @@ export default function IssueResolutionModal({
 
           <div className="modal-actions" style={{ marginTop: 18 }}>
             {isEditing && (
-              <button className="modal-btn modal-btn-danger" onClick={onDelete}>
-                Delete Issue
+              <button 
+                className="modal-btn modal-btn-danger" 
+                onClick={handleDeleteClick}
+                disabled={isDeleting || isSaving}
+                style={{
+                  cursor: (isDeleting || isSaving) ? "not-allowed" : "pointer",
+                  opacity: (isDeleting || isSaving) ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
+                }}
+              >
+                {isDeleting && <Loader2 size={16} className="spinner" />}
+                {isDeleting ? "Deleting..." : "Delete Issue"}
               </button>
             )}
-            <button className="modal-btn modal-btn-secondary" onClick={onClose}>
+            <button 
+              className="modal-btn modal-btn-secondary" 
+              onClick={handleCloseClick}
+              disabled={isSaving}
+              style={{
+                cursor: isSaving ? "not-allowed" : "pointer",
+                opacity: isSaving ? 0.6 : 1
+              }}
+            >
               Cancel
             </button>
-            <button className="modal-btn modal-btn-primary" onClick={handleSubmit}>
-              Submit
+            <button 
+              className="modal-btn modal-btn-primary" 
+              onClick={handleSubmit}
+              disabled={isSaving}
+              style={{
+                cursor: isSaving ? "not-allowed" : "pointer",
+                opacity: isSaving ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}
+            >
+              {isSaving && <Loader2 size={16} className="spinner" />}
+              {isSaving ? "Saving..." : "Submit"}
             </button>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .spinner {
+          animation: spin 1s linear infinite;
+        }
+      `}</style>
     </>
   );
 }

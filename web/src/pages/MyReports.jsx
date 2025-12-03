@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+
 import Header from "../components/Header";
 import { getAllIssues, deleteIssue } from "../api/issues";
+
 import "../css/MyReports.css";
+
+import useAutoRefresh from "../hooks/useAutoRefresh"; // 🔥 Auto-refresh
 
 export default function MyReports() {
   const navigate = useNavigate();
@@ -17,19 +21,19 @@ export default function MyReports() {
   const [allIssues, setAllIssues] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all issues and filter by current user
-  useEffect(() => {
+  // ---------------------------------------
+  // REFRESHABLE FETCH FUNCTION
+  // ---------------------------------------
+  const fetchMyIssues = useCallback(() => {
     const token = localStorage.getItem("authToken");
     if (!token) {
       navigate("/login");
       return;
     }
 
-    setLoading(true);
     getAllIssues()
       .then((data) => {
-        // Filter issues reported by current user
-        const myIssues = data.filter((issue) => {
+        const mine = data.filter((issue) => {
           return (
             issue.reportedById === user.id ||
             issue.userId === user.id ||
@@ -38,7 +42,8 @@ export default function MyReports() {
             issue.email === user.email
           );
         });
-        setAllIssues(myIssues);
+
+        setAllIssues(mine);
       })
       .catch((err) => {
         console.error("Failed to fetch issues:", err);
@@ -47,11 +52,19 @@ export default function MyReports() {
       .finally(() => setLoading(false));
   }, [navigate, user.id, user.email]);
 
-  // Helper: Check if status is resolved
+  // Initial load
+  useEffect(() => {
+    fetchMyIssues();
+  }, [fetchMyIssues]);
+
+  // 🔥 Auto-refresh every 3 seconds
+  useAutoRefresh(fetchMyIssues, 3000, true);
+
+  // Status helper
   const isResolvedStatus = (status) =>
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
-  // Statistics
+  // Stats
   const totalReports = allIssues.length;
   const activeIssuesCount = allIssues.filter(
     (i) => !isResolvedStatus(i.issueStatus)
@@ -60,27 +73,29 @@ export default function MyReports() {
     isResolvedStatus(i.issueStatus)
   ).length;
 
-  // Priority counts (only active issues)
+  // Priority counts
   const highCount = allIssues.filter(
     (i) => i.issuePriority === "HIGH" && !isResolvedStatus(i.issueStatus)
   ).length;
+
   const mediumCount = allIssues.filter(
     (i) => i.issuePriority === "MEDIUM" && !isResolvedStatus(i.issueStatus)
   ).length;
+
   const lowCount = allIssues.filter(
     (i) => i.issuePriority === "LOW" && !isResolvedStatus(i.issueStatus)
   ).length;
 
-  // Get unique buildings for filter
+  // Unique buildings
   const uniqueBuildings = useMemo(() => {
-    const buildings = new Set();
+    const setB = new Set();
     allIssues.forEach((issue) => {
-      if (issue.buildingName) buildings.add(issue.buildingName);
+      if (issue.buildingName) setB.add(issue.buildingName);
     });
-    return Array.from(buildings).sort();
+    return Array.from(setB).sort();
   }, [allIssues]);
 
-  // Filtered issues
+  // Filtering + Sorting
   const filteredIssues = useMemo(() => {
     let filtered = allIssues.filter((issue) => {
       const isActive = !isResolvedStatus(issue.issueStatus);
@@ -98,7 +113,7 @@ export default function MyReports() {
         issue.issueDescription?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         issue.issueLocation?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesTab && matchesPriority && matchesBuilding;
+      return matchesTab && matchesPriority && matchesBuilding && matchesSearch;
     });
 
     // Sorting
@@ -111,11 +126,9 @@ export default function MyReports() {
         (a, b) => new Date(a.issueCreatedAt) - new Date(b.issueCreatedAt)
       );
     } else if (sortBy === "priority") {
-      const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+      const order = { HIGH: 3, MEDIUM: 2, LOW: 1 };
       filtered.sort(
-        (a, b) =>
-          (priorityOrder[b.issuePriority] || 0) -
-          (priorityOrder[a.issuePriority] || 0)
+        (a, b) => (order[b.issuePriority] || 0) - (order[a.issuePriority] || 0)
       );
     }
 
@@ -155,7 +168,7 @@ export default function MyReports() {
   };
 
   const getPriorityClass = (priority) => {
-    switch (priority?.toUpperCase()) {
+    switch ((priority || "").toUpperCase()) {
       case "HIGH":
         return "priority-high";
       case "MEDIUM":
@@ -184,17 +197,11 @@ export default function MyReports() {
         <div className="reports-container">
           <h1 className="reports-title">My Reports</h1>
 
-          {/* Statistics Cards */}
+          {/* STATS */}
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-icon total">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
+                📄
               </div>
               <div className="stat-content">
                 <p className="stat-label">Total Reports</p>
@@ -203,11 +210,7 @@ export default function MyReports() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon active">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10"/>
-                </svg>
-              </div>
+              <div className="stat-icon active">⭕</div>
               <div className="stat-content">
                 <p className="stat-label">Active Issues</p>
                 <p className="stat-value">{activeIssuesCount}</p>
@@ -215,12 +218,7 @@ export default function MyReports() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon fixed">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-              </div>
+              <div className="stat-icon fixed">✔</div>
               <div className="stat-content">
                 <p className="stat-label">Fixed Issues</p>
                 <p className="stat-value">{fixedIssuesCount}</p>
@@ -263,54 +261,53 @@ export default function MyReports() {
             </div>
 
             <div className="filter-group">
-              <label>Most Recent</label>
+              <label>Sort</label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="filter-select"
               >
                 <option value="recent">Most Recent</option>
-                <option value="oldest">Oldest First</option>
-                <option value="priority">Priority (High to Low)</option>
+                <option value="oldest">Oldest</option>
+                <option value="priority">Priority</option>
               </select>
             </div>
           </div>
 
-          {/* Priority Filter Chips */}
+          {/* Priority chips */}
           <div className="priority-chips">
             <button
               onClick={() => setSelectedPriority("all")}
               className={`chip ${selectedPriority === "all" ? "active" : ""}`}
             >
-              <span>All</span>
-              <span className="chip-count">{activeIssuesCount}</span>
+              All <span className="chip-count">{activeIssuesCount}</span>
             </button>
+
             <button
               onClick={() => setSelectedPriority("high")}
               className={`chip chip-high ${
                 selectedPriority === "high" ? "active" : ""
               }`}
             >
-              <span>High</span>
-              <span className="chip-count">{highCount}</span>
+              High <span className="chip-count">{highCount}</span>
             </button>
+
             <button
               onClick={() => setSelectedPriority("medium")}
               className={`chip chip-medium ${
                 selectedPriority === "medium" ? "active" : ""
               }`}
             >
-              <span>Medium</span>
-              <span className="chip-count">{mediumCount}</span>
+              Medium <span className="chip-count">{mediumCount}</span>
             </button>
+
             <button
               onClick={() => setSelectedPriority("low")}
               className={`chip chip-low ${
                 selectedPriority === "low" ? "active" : ""
               }`}
             >
-              <span>Low</span>
-              <span className="chip-count">{lowCount}</span>
+              Low <span className="chip-count">{lowCount}</span>
             </button>
           </div>
 
@@ -318,13 +315,6 @@ export default function MyReports() {
           <div className="issues-list">
             {filteredIssues.length === 0 ? (
               <div className="no-results">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
                 <p>No reports found</p>
               </div>
             ) : (
@@ -332,6 +322,7 @@ export default function MyReports() {
                 <div key={issue.id} className="report-card">
                   <div className="report-header">
                     <h3 className="report-title">{issue.issueTitle}</h3>
+
                     <div className="report-badges">
                       <span
                         className={`priority-badge ${getPriorityClass(
@@ -340,6 +331,7 @@ export default function MyReports() {
                       >
                         {issue.issuePriority}
                       </span>
+
                       <span
                         className={`status-badge ${
                           isResolvedStatus(issue.issueStatus)
@@ -362,39 +354,17 @@ export default function MyReports() {
                     <p>
                       <strong>Submitted:</strong>{" "}
                       {issue.issueCreatedAt
-                        ? new Date(issue.issueCreatedAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            }
-                          )
+                        ? new Date(issue.issueCreatedAt).toLocaleDateString()
                         : "N/A"}
                     </p>
                   </div>
 
                   <div className="report-actions">
-                    <button
-                      className="action-btn edit-btn"
-                      onClick={() => handleEdit(issue)}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
+                    <button className="action-btn edit-btn" onClick={() => handleEdit(issue)}>
                       Edit
                     </button>
-                    <button
-                      className="action-btn delete-btn"
-                      onClick={() => handleDelete(issue.id)}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        <line x1="10" y1="11" x2="10" y2="17"/>
-                        <line x1="14" y1="11" x2="14" y2="17"/>
-                      </svg>
+
+                    <button className="action-btn delete-btn" onClick={() => handleDelete(issue.id)}>
                       Delete
                     </button>
                   </div>
