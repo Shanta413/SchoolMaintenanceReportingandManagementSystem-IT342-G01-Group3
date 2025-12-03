@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
-import "../../css/ReportIssue.css"; // ✔ Uses the same modern UI style
+import { createIssue } from "../../api/issues"; // ✅ Use the API function
+import "../../css/ReportIssue.css";
 
 export default function AdminReportIssueModal({
   isOpen,
@@ -30,20 +31,29 @@ export default function AdminReportIssueModal({
   const validateFile = (file) => {
     if (!file) return null;
 
+    console.log("📎 [File Upload] Attempting to upload:", file.name);
+    console.log("📎 [File Upload] File type:", file.type);
+    console.log("📎 [File Upload] File size:", (file.size / 1024 / 1024).toFixed(2), "MB");
+
     // Check file type
     const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
     if (!validTypes.includes(file.type)) {
-      showToast("error", "Only PNG, JPG, and GIF images are allowed.");
+      const errorMsg = "Only PNG, JPG, and GIF images are allowed.";
+      showToast("error", errorMsg);
+      console.log("❌ [File Upload] Invalid file type:", file.type);
       return null;
     }
 
     // Check file size (5MB limit)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (file.size > maxSize) {
-      showToast("error", "Image size must be less than 5MB.");
+      const errorMsg = "Image size must be less than 5MB.";
+      showToast("error", errorMsg);
+      console.log("❌ [File Upload] File too large:", (file.size / 1024 / 1024).toFixed(2), "MB");
       return null;
     }
 
+    console.log("✅ [File Upload] File accepted:", file.name);
     return file;
   };
 
@@ -66,6 +76,7 @@ export default function AdminReportIssueModal({
     
     if (validFile) {
       setFile(validFile);
+      showToast("success", `File "${validFile.name}" ready to upload`);
     } else {
       // Clear the file input
       e.target.value = "";
@@ -75,54 +86,50 @@ export default function AdminReportIssueModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
-    const token = localStorage.getItem("authToken");
-
-    const formData = new FormData();
-    const issueDto = {
-      issueTitle: title,
-      issueDescription: description,
-      issuePriority: priority,
-      buildingId: buildingId,
-      exactLocation: location,
-    };
-
-    formData.append(
-      "data",
-      new Blob([JSON.stringify(issueDto)], { type: "application/json" })
-    );
-    if (file) formData.append("photo", file);
-
-    try {
-      console.log("[Modal] SUBMIT body dto:", issueDto);
-
-      const res = await fetch("http://localhost:8080/api/issues", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        console.error("[Modal] Submit failed:", result);
-        showToast("error", result.error || "Failed to create issue");
-      } else {
-        console.log("[Modal] SUCCESS:", result);
-        showToast("success", "Issue created successfully!");
-        onIssueCreated?.();
-        resetForm();
-        setTimeout(onClose, 500);
-      }
-    } catch (err) {
-      console.error("[Modal] ERROR:", err);
-      showToast("error", "Something went wrong.");
+    // Validation
+    if (!title || !priority || !description || !buildingId || !location) {
+      showToast("error", "Please fill all required fields.");
+      return;
     }
 
-    setLoading(false);
+    setLoading(true);
+    console.log("📤 [Modal] Submitting issue:", {
+      issueTitle: title,
+      issuePriority: priority,
+      buildingId,
+      exactLocation: location,
+      hasFile: !!file
+    });
+
+    try {
+      // ✅ Use the createIssue API function instead of hardcoded fetch
+      await createIssue(
+        {
+          issueTitle: title,
+          issueDescription: description,
+          issuePriority: priority,
+          buildingId: buildingId,
+          exactLocation: location,
+          issueLocation: buildingCode, // Optional: for consistency
+        },
+        file // Pass the file as second argument
+      );
+
+      console.log("✅ [Modal] Issue created successfully");
+      showToast("success", "Issue created successfully!");
+      
+      // Notify parent and close
+      onIssueCreated?.();
+      resetForm();
+      setTimeout(onClose, 500);
+    } catch (error) {
+      console.error("❌ [Modal] Failed to create issue:", error);
+      const errorMsg = error?.response?.data?.message || "Failed to create issue. Please try again.";
+      showToast("error", errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,6 +139,19 @@ export default function AdminReportIssueModal({
           className={`toast ${
             toast.type === "success" ? "toast-success" : "toast-error"
           }`}
+          style={{
+            position: "fixed",
+            top: 20,
+            right: 20,
+            zIndex: 10000,
+            padding: "12px 20px",
+            borderRadius: 8,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            background: toast.type === "success" ? "#10b981" : "#ef4444",
+            color: "#fff",
+            fontWeight: 500,
+            minWidth: 250
+          }}
         >
           {toast.message}
         </div>
@@ -161,6 +181,7 @@ export default function AdminReportIssueModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
@@ -174,6 +195,7 @@ export default function AdminReportIssueModal({
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               required
+              disabled={loading}
             >
               <option value="">Select priority level</option>
               <option value="HIGH">High</option>
@@ -191,6 +213,11 @@ export default function AdminReportIssueModal({
               className="form-input"
               value={`${buildingCode}`}
               readOnly
+              style={{
+                backgroundColor: "#f3f4f6",
+                cursor: "not-allowed",
+                color: "#6b7280"
+              }}
             />
           </div>
 
@@ -205,6 +232,7 @@ export default function AdminReportIssueModal({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
 
@@ -219,6 +247,8 @@ export default function AdminReportIssueModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
+              disabled={loading}
+              rows={4}
             ></textarea>
           </div>
 
@@ -228,7 +258,8 @@ export default function AdminReportIssueModal({
 
             <div
               className={`file-upload-area ${file ? "has-file" : ""}`}
-              onClick={() => fileInput.current.click()}
+              onClick={() => !loading && fileInput.current.click()}
+              style={{ cursor: loading ? "not-allowed" : "pointer" }}
             >
               <input
                 type="file"
@@ -236,6 +267,7 @@ export default function AdminReportIssueModal({
                 ref={fileInput}
                 style={{ display: "none" }}
                 onChange={handleFileUpload}
+                disabled={loading}
               />
 
               {!file ? (
@@ -260,6 +292,7 @@ export default function AdminReportIssueModal({
                         fileInput.current.value = "";
                       }
                     }}
+                    disabled={loading}
                   >
                     ×
                   </button>
@@ -275,11 +308,23 @@ export default function AdminReportIssueModal({
               className="btn btn-cancel"
               onClick={onClose}
               disabled={loading}
+              style={{
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1
+              }}
             >
               Cancel
             </button>
 
-            <button type="submit" className="btn btn-submit" disabled={loading}>
+            <button 
+              type="submit" 
+              className="btn btn-submit" 
+              disabled={loading}
+              style={{
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1
+              }}
+            >
               {loading ? "Submitting..." : "Submit Issue"}
             </button>
           </div>
