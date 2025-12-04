@@ -41,6 +41,7 @@
   letter-spacing: 0.01em;
 }
 
+/* Map Link Button */
 .map-link {
   display: flex;
   align-items: center;
