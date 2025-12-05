@@ -7,9 +7,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class ProfileResponse {
+    private String id;  // 🔥 Changed from Long to String (UUID)
     private String fullname;
     private String email;
     private String mobileNumber;
