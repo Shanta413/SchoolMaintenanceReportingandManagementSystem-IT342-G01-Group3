@@ -1,14 +1,14 @@
 package com.smrms.smrms.service;
 
-import com. smrms.smrms. dto.*;
-import com.smrms. smrms.entity.*;
+import com.smrms.smrms.dto.*;
+import com.smrms.smrms.entity.*;
 import com.smrms.smrms.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time. Instant;
-import java.util. List;
+import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -50,15 +50,15 @@ public class IssueService {
         if (reportFile != null && !reportFile.isEmpty()) {
             System.out.println("[CREATE] Uploading REPORT FILE: " + reportFile.getOriginalFilename());
             reportUrl = storage.upload(reportFile, "document");
-            System. out.println("[CREATE] Uploaded REPORT URL: " + reportUrl);
+            System.out.println("[CREATE] Uploaded REPORT URL: " + reportUrl);
         } else {
-            System.out. println("[CREATE] No report file uploaded.");
+            System.out.println("[CREATE] No report file uploaded.");
         }
 
         // Build and save issue
         Issue issue = Issue.builder()
                 .reportedBy(reporter)
-                . building(building)
+                .building(building)
                 .issueTitle(req.getIssueTitle())
                 .issueDescription(req.getIssueDescription())
                 .issueLocation(req.getIssueLocation())
@@ -72,7 +72,6 @@ public class IssueService {
                 .build();
 
         issueRepository.save(issue);
-
         return mapToResponse(issue);
     }
 
@@ -80,9 +79,9 @@ public class IssueService {
     // LIST ALL ISSUES
     // ==========================
     public List<IssueSummaryDTO> getAllIssues() {
-        return issueRepository. findAllByOrderByIssueCreatedAtDesc()
+        return issueRepository.findAllByOrderByIssueCreatedAtDesc()
                 .stream()
-                . map(this::mapToSummary)
+                .map(this::mapToSummary)
                 .toList();
     }
 
@@ -91,11 +90,11 @@ public class IssueService {
     // ==========================
     public List<IssueSummaryDTO> getIssuesByBuilding(String buildingId) {
         Building building = buildingRepository.findById(buildingId)
-                . orElseThrow(() -> new RuntimeException("Building not found: " + buildingId));
+                .orElseThrow(() -> new RuntimeException("Building not found: " + buildingId));
 
         return issueRepository.findByBuildingOrderByIssueCreatedAtDesc(building)
                 .stream()
-                . map(this::mapToSummary)
+                .map(this::mapToSummary)
                 .toList();
     }
 
@@ -123,7 +122,7 @@ public class IssueService {
         System.out.println("Received Status: " + req.getIssueStatus());
         System.out.println("Resolver Staff Id: " + req.getResolvedByStaffId());
         System.out.println("Building Code: " + req.getBuildingCode());
-        System. out.println("Report file: " + (reportFile != null ? reportFile. getOriginalFilename() : "null"));
+        System.out.println("Report file: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
         System.out.println("===================================");
 
         Issue issue = issueRepository.findById(id)
@@ -134,33 +133,33 @@ public class IssueService {
             issue.setIssueTitle(req.getIssueTitle());
         if (req.getIssueDescription() != null)
             issue.setIssueDescription(req.getIssueDescription());
-        if (req. getExactLocation() != null)
-            issue. setExactLocation(req.getExactLocation());
+        if (req.getExactLocation() != null)
+            issue.setExactLocation(req.getExactLocation());
         if (req.getIssuePriority() != null)
-            issue. setIssuePriority(IssuePriority.valueOf(req.getIssuePriority(). toUpperCase()));
+            issue.setIssuePriority(IssuePriority.valueOf(req.getIssuePriority().toUpperCase()));
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // ✅ BUILDING (if buildingCode provided, update both building relationship AND issueLocation)
-        if (req.getBuildingCode() != null && ! req.getBuildingCode().isBlank()) {
-            Building newBuilding = buildingRepository.findByBuildingCode(req. getBuildingCode())
+        // BUILDING UPDATE
+        if (req.getBuildingCode() != null && !req.getBuildingCode().isBlank()) {
+            Building newBuilding = buildingRepository.findByBuildingCode(req.getBuildingCode())
                     .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingCode()));
-            issue. setBuilding(newBuilding);
-            issue.setIssueLocation(newBuilding.getBuildingCode());  // ✅ Sync issueLocation
-            System.out.println("[UPDATE] Building changed to: " + newBuilding.getBuildingName() + " (" + newBuilding. getBuildingCode() + ")");
+
+            issue.setBuilding(newBuilding);
+            issue.setIssueLocation(newBuilding.getBuildingCode());
         }
 
         // RESOLVER STAFF
-        if (req. getResolvedByStaffId() != null && ! req.getResolvedByStaffId().isBlank()) {
+        if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
 
-            User resolver = userRepository. findById(req.getResolvedByStaffId())
+            User resolver = userRepository.findById(req.getResolvedByStaffId())
                     .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
 
             issue.setResolvedBy(resolver);
 
             if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus()) ||
-                    "FIXED". equalsIgnoreCase(req. getIssueStatus())) {
-                issue.setIssueCompletedAt(Instant. now());
+                    "FIXED".equalsIgnoreCase(req.getIssueStatus())) {
+                issue.setIssueCompletedAt(Instant.now());
             }
 
         } else {
@@ -168,12 +167,12 @@ public class IssueService {
             issue.setIssueCompletedAt(null);
         }
 
-        // FILE UPLOAD (DOCUMENT ONLY)
+        // FILE UPLOAD
         if (reportFile != null && !reportFile.isEmpty()) {
-            System. out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
+            System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
             String newUrl = storage.upload(reportFile, "document");
             issue.setIssueReportFile(newUrl);
-            System. out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
+            System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
         }
 
         issueRepository.save(issue);
@@ -184,8 +183,8 @@ public class IssueService {
     // DELETE ISSUE
     // ==========================
     public void deleteIssue(String id) {
-        Issue issue = issueRepository. findById(id)
-                . orElseThrow(() -> new RuntimeException("Issue not found: " + id));
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
         issueRepository.delete(issue);
     }
 
@@ -194,23 +193,20 @@ public class IssueService {
     // ==========================
     private IssueSummaryDTO mapToSummary(Issue i) {
         return IssueSummaryDTO.builder()
-                .id(i. getId())
+                .id(i.getId())
                 .issueTitle(i.getIssueTitle())
                 .issueDescription(i.getIssueDescription())
                 .issueLocation(i.getIssueLocation())
                 .exactLocation(i.getExactLocation())
-                .issuePriority(i.getIssuePriority(). name())
+                .issuePriority(i.getIssuePriority().name())
                 .issueStatus(i.getIssueStatus().name())
                 .issueCreatedAt(i.getIssueCreatedAt())
-                .buildingId(i.getBuilding(). getId())
+                .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
-                . issueReportFile(i.getIssueReportFile())
-
-                // 🔥 MOST IMPORTANT FIELDS
+                .issueReportFile(i.getIssueReportFile())
                 .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
-
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
@@ -222,24 +218,20 @@ public class IssueService {
     private IssueResponse mapToResponse(Issue i) {
         return IssueResponse.builder()
                 .id(i.getId())
-                . issueTitle(i.getIssueTitle())
+                .issueTitle(i.getIssueTitle())
                 .issueDescription(i.getIssueDescription())
                 .issueLocation(i.getIssueLocation())
                 .exactLocation(i.getExactLocation())
-                .issuePriority(i.getIssuePriority(). name())
+                .issuePriority(i.getIssuePriority().name())
                 .issueStatus(i.getIssueStatus().name())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
-                . issueReportFile(i. getIssueReportFile())
+                .issueReportFile(i.getIssueReportFile())
                 .issueCreatedAt(i.getIssueCreatedAt())
                 .issueCompletedAt(i.getIssueCompletedAt())
                 .buildingId(i.getBuilding().getId())
-                .buildingName(i.getBuilding(). getBuildingName())
-
-                // Reporter
-                .reportedById(i.getReportedBy(). getId())
-                .reportedByName(i.getReportedBy().getFullname())
-
-                // Resolver
+                .buildingName(i.getBuilding().getBuildingName())
+                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
+                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
