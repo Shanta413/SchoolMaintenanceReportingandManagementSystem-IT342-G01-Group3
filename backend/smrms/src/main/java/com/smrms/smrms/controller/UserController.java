@@ -21,7 +21,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://frontend-production-e168.up.railway. app"
+})
 public class UserController {
 
     private final UserRepository userRepository;
