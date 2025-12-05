@@ -152,7 +152,7 @@ public class MaintenanceStaffController {
             user.setPasswordUpdatedAt(LocalDateTime.now());
         }
 
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setUpdateAt(LocalDateTime.now());
         userRepo.save(user);
 
         // update staff ID
