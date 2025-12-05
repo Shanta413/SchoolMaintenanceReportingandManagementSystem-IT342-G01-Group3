@@ -7,7 +7,7 @@ import com.smrms.smrms.entity.UserRole;
 import com. smrms.smrms. repository.RoleRepository;
 import com.smrms.smrms.repository.StudentRepository;
 import com.smrms.smrms.repository.UserRepository;
-import com.smrms. smrms.repository.UserRoleRepository;
+import com.smrms.smrms.repository.UserRoleRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet. http.HttpServletRequest;
 import jakarta.servlet. http.HttpServletResponse;
@@ -46,7 +46,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${supabase.service_key}")
     private String supabaseServiceKey;
 
-    // ✅ ADD THIS - Read frontend URL from application.properties
     @Value("${frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
@@ -57,8 +56,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         OAuth2User oAuth2User = (OAuth2User) authentication. getPrincipal();
 
-        String email   = oAuth2User.getAttribute("email");
-        String name    = oAuth2User.getAttribute("name");
+        String email = oAuth2User.getAttribute("email");
+        String name = oAuth2User.getAttribute("name");
         String picture = oAuth2User.getAttribute("picture");
 
         if (email == null) {
@@ -80,7 +79,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         });
 
         // Upload avatar if missing
-        if ((user.getAvatarUrl() == null || user.getAvatarUrl(). isBlank()) && picture != null) {
+        if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && picture != null) {
             try {
                 String uploadedUrl = uploadImageToSupabase(picture);
                 user. setAvatarUrl(uploadedUrl);
@@ -89,14 +88,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 if (user.getAvatarUrl() == null || user.getAvatarUrl(). isBlank()) {
                     user.setAvatarUrl(picture);
                 }
-                System.err.println("⚠️ Avatar upload failed, using Google picture URL.  Reason: " + e.getMessage());
+                System. err.println("⚠️ Avatar upload failed, using Google picture URL.  Reason: " + e.getMessage());
             }
             userRepository.save(user);
         }
 
         // Ensure STUDENT role
         Role studentRole = roleRepository.findByRoleName("STUDENT")
-                .orElseGet(() -> roleRepository.save(
+                .orElseGet(() -> roleRepository. save(
                         Role.builder()
                                 .roleName("STUDENT")
                                 .roleCreatedAt(LocalDateTime.now())
@@ -107,12 +106,12 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             userRoleRepository. save(UserRole.builder()
                     .user(user)
                     .role(studentRole)
-                    .userRoleCreatedAt(LocalDateTime. now())
+                    .userRoleCreatedAt(LocalDateTime.now())
                     .build());
         }
 
         // Create student profile if missing
-        studentRepository. findByUser(user). orElseGet(() -> {
+        studentRepository.findByUser(user).orElseGet(() -> {
             Student student = Student.builder()
                     .user(user)
                     .studentDepartment("BSIT")
@@ -124,10 +123,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // JWT + role
         String token = jwtService.generateToken(email);
         String roleName = userRoleRepository.findByUser(user)
-                .map(ur -> ur.getRole().getRoleName())
+                .map(ur -> ur. getRole().getRoleName())
                 .orElse("STUDENT");
 
-        // ✅ FIXED - Use the injected frontendUrl from properties
+        // Redirect to frontend with token and role
         String redirect = frontendUrl + "/login? token=" + token + "&role=" + roleName;
         response. sendRedirect(redirect);
     }
@@ -155,7 +154,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             imageBytes = buffer.toByteArray();
         }
 
-        String fileName = UUID.randomUUID() + ".jpg";
+        String fileName = UUID.randomUUID() + ". jpg";
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + supabaseBucket + "/" + fileName);
 
         HttpURLConnection uploadConn = (HttpURLConnection) uploadUrl.openConnection();
@@ -164,7 +163,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         uploadConn.setConnectTimeout(8000);
         uploadConn.setReadTimeout(8000);
 
-        uploadConn.setRequestProperty("Authorization", "Bearer " + supabaseServiceKey);
+        uploadConn. setRequestProperty("Authorization", "Bearer " + supabaseServiceKey);
         uploadConn. setRequestProperty("apikey", supabaseServiceKey);
         uploadConn.setRequestProperty("Content-Type", "image/jpeg");
         uploadConn.setRequestProperty("x-upsert", "true");
