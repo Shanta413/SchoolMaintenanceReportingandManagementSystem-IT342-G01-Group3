@@ -25,80 +25,68 @@ public class SupabaseStorageService {
     private String serviceKey;
 
     /**
-     * Uploads a file to Supabase Storage and returns its PUBLIC URL.
-     * @param file The file to upload.
-     * @param type "image" for image files, "document" for doc/pdf.
+     * Uploads a multipart file to Supabase Storage and returns its PUBLIC URL.
+     * Only PDF, DOC, DOCX allowed. The bucket must be public.
      */
     public String upload(MultipartFile file, String type) throws Exception {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }
-
-        // File extension and content-type checks
         String original = file.getOriginalFilename();
+        String safeName = (original == null || original.isBlank() ? "file" : original.replaceAll("\\s+", "_"));
         String ext = original != null ? original.toLowerCase() : "";
         String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
-            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            contentType = "application/octet-stream";
         }
 
+        // Check type
         boolean isAllowed = false;
         if ("image".equalsIgnoreCase(type)) {
-            isAllowed = ext.endsWith(".jpg") || ext.endsWith(".jpeg") || ext.endsWith(".png") ||
-                    ext.endsWith(".gif") || ext.endsWith(".bmp") || ext.endsWith(".webp");
-            // Add more if you support more image types
-            if (!isAllowed) {
-                throw new IllegalArgumentException("Only JPG, JPEG, PNG, GIF, BMP, or WEBP image files are allowed.");
-            }
+            isAllowed =
+                    contentType.startsWith("image/") &&
+                            (ext.endsWith(".png") || ext.endsWith(".jpg") || ext.endsWith(".jpeg") || ext.endsWith(".gif"));
         } else if ("document".equalsIgnoreCase(type)) {
-            isAllowed = ext.endsWith(".pdf") || ext.endsWith(".doc") || ext.endsWith(".docx");
-            if (!isAllowed) {
-                throw new IllegalArgumentException("Only PDF, DOC, or DOCX files are allowed.");
-            }
-        } else {
-            throw new IllegalArgumentException("Unknown file type: " + type);
+            isAllowed =
+                    contentType.equals("application/pdf") ||
+                            contentType.equals("application/msword") ||
+                            contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
+                            ext.endsWith(".pdf") || ext.endsWith(".doc") || ext.endsWith(".docx");
+        }
+        if (!isAllowed) {
+            throw new IllegalArgumentException("File type does not match the allowed types for: " + type);
         }
 
-        // Build upload URL: POST /storage/v1/object/{bucket}/{path}
-        String safeName = (original == null || original.isBlank() ? "file" : original.replaceAll("\\s+", "_"));
         String objectPath = UUID.randomUUID() + "_" + safeName;
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + bucket + "/" + objectPath);
 
-        HttpURLConnection conn = (HttpURLConnection) uploadUrl.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(20000);
+        HttpURLConnection connection = (HttpURLConnection) uploadUrl.openConnection();
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        connection.setConnectTimeout(8000);
+        connection.setReadTimeout(8000);
 
-        // Required headers
-        conn.setRequestProperty("Authorization", "Bearer " + serviceKey);
-        conn.setRequestProperty("apikey", serviceKey);
-        conn.setRequestProperty("Content-Type", contentType);
-        conn.setRequestProperty("x-upsert", "true");
+        connection.setRequestProperty("Authorization", "Bearer " + serviceKey);
+        connection.setRequestProperty("apikey", serviceKey);
+        connection.setRequestProperty("Content-Type", contentType);
+        connection.setRequestProperty("x-upsert", "true");
 
-        try (OutputStream os = conn.getOutputStream()) {
+        try (OutputStream os = connection.getOutputStream()) {
             os.write(file.getBytes());
         }
 
-        int code = conn.getResponseCode();
-        if (code != 200 && code != 201) {
-            String err = readStream(conn.getErrorStream());
-            throw new RuntimeException("Supabase upload failed (HTTP " + code + "): " + err);
+        int uploadCode = connection.getResponseCode();
+        if (uploadCode != 200 && uploadCode != 201) {
+            InputStream es = connection.getErrorStream();
+            String err = "";
+            if (es != null) {
+                try (es) {
+                    err = new String(es.readAllBytes());
+                }
+            }
+            throw new RuntimeException("Supabase upload failed (HTTP " + uploadCode + "): " + err);
         }
-
-        // Return public URL
         return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + objectPath;
     }
 
-    private String readStream(InputStream is) {
-        if (is == null) return "";
-        try (is; ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = is.read(buf)) != -1) bos.write(buf, 0, n);
-            return bos.toString();
-        } catch (Exception e) {
-            return "";
-        }
-    }
 }

@@ -11,6 +11,8 @@ import AdminBuildingCard from "../../components/staff/AdminBuildingCard";
 import SearchBar from "../../components/SearchBar";
 import FilterDropdown from "../../components/FilterDropdown";
 
+import useAutoRefresh from "../../hooks/useAutoRefresh"; // 🔥 Auto-refresh import
+
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
   { value: "lowest", label: "Lowest Issues First" },
@@ -41,11 +43,10 @@ export default function Issues() {
   const [sortFilter, setSortFilter] = useState("highest");
 
   // ============================================
-  // FETCH BUILDINGS
+  // FETCH BUILDINGS (auto-refresh safe)
   // ============================================
   const fetchBuildings = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await getAllBuildings();
 
       if (response) setBuildings(response);
@@ -57,9 +58,13 @@ export default function Issues() {
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
     fetchBuildings();
   }, [fetchBuildings]);
+
+  // 🔥 AUTO-REFRESH every 3 seconds
+  useAutoRefresh(fetchBuildings, 3000, true);
 
   // ============================================
   // CREATE / UPDATE CALLBACKS
@@ -98,9 +103,7 @@ export default function Issues() {
 
     try {
       await deleteBuilding(selectedBuilding.id);
-      setBuildings((prev) =>
-        prev.filter((b) => b.id !== selectedBuilding.id)
-      );
+      setBuildings((prev) => prev.filter((b) => b.id !== selectedBuilding.id));
     } catch (err) {
       console.error("Delete error:", err);
       setError("Failed to delete building.");
@@ -123,7 +126,7 @@ export default function Issues() {
   );
 
   // ============================================
-  // TOTAL ISSUES
+  // TOTAL ISSUES (helper)
   // ============================================
   const getTotalIssues = useCallback((b) => {
     if (!b.issueCount) return 0;
@@ -139,7 +142,6 @@ export default function Issues() {
   // FILTER AND SORT BUILDINGS
   // ============================================
   const filteredAndSortedBuildings = useMemo(() => {
-    // First, filter by search query
     let filtered = buildings.filter((b) => {
       const matchesName = (b.buildingName || "")
         .toLowerCase()
@@ -150,7 +152,6 @@ export default function Issues() {
       return matchesName || matchesCode;
     });
 
-    // Then, sort based on filter
     if (sortFilter) {
       filtered = [...filtered].sort((a, b) => {
         const aTotal = getTotalIssues(a);
@@ -189,29 +190,27 @@ export default function Issues() {
   // ============================================
   return (
     <div className="issues-page">
-      
+
       {/* HEADER */}
       <div className="issues-header">
         <h1>Buildings Overview</h1>
 
-        <button
-          className="create-building-btn"
-          onClick={() => setShowModal(true)}
-        >
+        <button className="create-building-btn" onClick={() => setShowModal(true)}>
           + Create Building
         </button>
       </div>
 
-      {/* ERRORS */}
+      {/* ERROR */}
       {error && <div className="error-banner">⚠️ {error}</div>}
 
-      {/* SEARCH AND FILTER */}
+      {/* SEARCH + FILTER */}
       <div className="search-filter-container">
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Search buildings by name or code..."
         />
+
         <FilterDropdown
           value={sortFilter}
           onChange={setSortFilter}
@@ -261,7 +260,7 @@ export default function Issues() {
         building={selectedBuilding}
       />
 
-      {/* DELETE CONFIRM MODAL */}
+      {/* DELETE MODAL */}
       {showDeleteModal && selectedBuilding && (
         <div className="modal-overlay">
           <div className="modal-content delete-modal">
@@ -273,14 +272,9 @@ export default function Issues() {
             </p>
 
             <div className="modal-actions">
-              <button onClick={() => setShowDeleteModal(false)}>
-                Cancel
-              </button>
+              <button onClick={() => setShowDeleteModal(false)}>Cancel</button>
 
-              <button
-                className="danger-btn"
-                onClick={handleDeleteConfirm}
-              >
+              <button className="danger-btn" onClick={handleDeleteConfirm}>
                 Delete
               </button>
             </div>

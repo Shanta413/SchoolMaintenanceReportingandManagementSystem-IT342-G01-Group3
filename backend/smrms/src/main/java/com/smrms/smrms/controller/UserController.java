@@ -21,7 +21,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://frontend-production-e168.up.railway. app"
+})
 public class UserController {
 
     private final UserRepository userRepository;
@@ -30,7 +34,7 @@ public class UserController {
 
     // ✅ GET: fetch current user profile (for logged-in user)
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(Authentication authentication) {
+    public ResponseEntity<? > getProfile(Authentication authentication) {
         try {
             if (authentication == null || authentication.getName() == null) {
                 return ResponseEntity.status(401).body("Unauthorized");
@@ -38,17 +42,18 @@ public class UserController {
 
             String email = authentication.getName();
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("User not found: " + email));
+                    . orElseThrow(() -> new RuntimeException("User not found: " + email));
 
             String studentDepartment = null;
             String studentIdNumber = null;
 
             if (user.getStudent() != null) {
                 studentDepartment = user.getStudent().getStudentDepartment();
-                studentIdNumber = user.getStudent().getStudentIdNumber();
+                studentIdNumber = user. getStudent(). getStudentIdNumber();
             }
 
             ProfileResponse response = new ProfileResponse(
+                    user.getId(),  // 🔥 Returns String UUID
                     user.getFullname(),
                     user.getEmail(),
                     user.getMobileNumber(),

@@ -1,12 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, User, Calendar, Edit2, Trash2 } from "lucide-react";
+
 import { getBuildingByCode } from "../api/building";
 import { getIssuesByBuilding, deleteIssue } from "../api/issues";
+
 import Header from "../components/Header";
 import UserActiveIssueModal from "../components/UserActiveIssueModal";
+
 import "../css/BuildingDetails.css";
 import "../css/components_css/UserActiveIssueModal.css";
+
+import useAutoRefresh from "../hooks/useAutoRefresh";
 
 export default function BuildingDetail() {
   const { buildingCode } = useParams();
@@ -22,34 +27,84 @@ export default function BuildingDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
   const [modalIssue, setModalIssue] = useState(null);
 
-  // Fetch building data
+  // Toast notification
+  const [toast, setToast] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toast helper
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ================================
+  // FETCH BUILDING (ONCE)
+  // ================================
   useEffect(() => {
     setLoading(true);
     setError("");
+
     getBuildingByCode(buildingCode)
-      .then((data) => setBuilding(data))
+      .then((data) => {
+        setBuilding(data);
+        console.log("✅ Building loaded:", data);
+      })
       .catch((err) => {
-        setError(
+        const errorMsg =
           err?.response?.data?.message ||
-            "Building not found. Please check the code or go back."
-        );
+          "Building not found. Please check the code or go back.";
+        setError(errorMsg);
+        console.error("❌ Failed to load building:", err);
       })
       .finally(() => setLoading(false));
   }, [buildingCode]);
 
-  // Fetch issues for this building
-  useEffect(() => {
-    if (building) {
-      setIssuesLoading(true);
-      getIssuesByBuilding(building.id)
-        .then((data) => setIssues(data))
-        .catch(() => setIssues([]))
-        .finally(() => setIssuesLoading(false));
-    }
-  }, [building]);
+  // ================================
+  // FETCH ISSUES (AUTO-REFRESH SAFE)
+  // ================================
+  const fetchIssues = useCallback(() => {
+    if (!building?.id) return;
 
+    // Only show loading spinner on initial load
+    if (isInitialLoad) {
+      setIssuesLoading(true);
+    }
+
+    getIssuesByBuilding(building.id)
+      .then((data) => {
+        setIssues(data);
+        console.log("✅ Issues loaded:", data.length);
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load issues:", err);
+        setIssues([]);
+        if (isInitialLoad) {
+          showToast("error", "Failed to load issues");
+        }
+      })
+      .finally(() => {
+        if (isInitialLoad) {
+          setIssuesLoading(false);
+        }
+      });
+  }, [building, isInitialLoad]);
+
+  useEffect(() => {
+    fetchIssues();
+  }, [fetchIssues]);
+
+  // 🔥 AUTO-REFRESH ISSUES EVERY 3 SECONDS
+  useAutoRefresh(fetchIssues, 3000, true);
+
+  // ================================
+  // PRIORITY COLORS
+  // ================================
   const getPriorityColor = (priority) => {
     switch ((priority || "").toUpperCase()) {
       case "HIGH":
@@ -63,39 +118,76 @@ export default function BuildingDetail() {
     }
   };
 
-  // Treat "FIXED" as resolved as well
   const isResolvedStatus = (status) =>
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
-  // Filtering logic
+  // ================================
+  // FILTERING + COUNTS
+  // ================================
   const filteredIssues = issues.filter((issue) => {
     const isActive = !isResolvedStatus(issue.issueStatus);
     const matchesTab = activeTab === "active" ? isActive : !isActive;
     const matchesPriority =
       selectedPriority === "all" ||
-      (issue.issuePriority?.toLowerCase() === selectedPriority);
+      issue.issuePriority?.toLowerCase() === selectedPriority;
     const matchesSearch =
       issue.issueTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       issue.issueDescription?.toLowerCase().includes(searchQuery.toLowerCase());
+
     return matchesTab && matchesPriority && matchesSearch;
   });
 
   const activeIssuesCount = issues.filter(
     (i) => !isResolvedStatus(i.issueStatus)
   ).length;
+
   const resolvedIssuesCount = issues.filter((i) =>
     isResolvedStatus(i.issueStatus)
   ).length;
+
   const highCount = issues.filter(
     (i) => i.issuePriority === "HIGH" && !isResolvedStatus(i.issueStatus)
   ).length;
+
   const mediumCount = issues.filter(
     (i) => i.issuePriority === "MEDIUM" && !isResolvedStatus(i.issueStatus)
   ).length;
+
   const lowCount = issues.filter(
     (i) => i.issuePriority === "LOW" && !isResolvedStatus(i.issueStatus)
   ).length;
 
+  // ================================
+  // DELETE HANDLER
+  // ================================
+  const handleDelete = async (issueId, e) => {
+    e.stopPropagation();
+    
+    if (!window.confirm("Are you sure you want to delete this issue?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    console.log("🗑️ Deleting issue:", issueId);
+
+    try {
+      await deleteIssue(issueId);
+      setIssues((prev) => prev.filter((i) => i.id !== issueId));
+      console.log("✅ Issue deleted successfully");
+      showToast("success", "Issue deleted successfully");
+    } catch (error) {
+      console.error("❌ Failed to delete issue:", error);
+      const errorMsg =
+        error?.response?.data?.message || "Failed to delete issue. Please try again.";
+      showToast("error", errorMsg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // ================================
+  // LOADING / ERROR UI
+  // ================================
   if (loading) {
     return (
       <div className="loading-container">
@@ -107,10 +199,7 @@ export default function BuildingDetail() {
   if (error) {
     return (
       <div className="error-container">
-        <button
-          onClick={() => navigate("/buildings")}
-          className="back-button-simple"
-        >
+        <button onClick={() => navigate("/buildings")} className="back-button-simple">
           <ArrowLeft size={18} />
           Back to Buildings
         </button>
@@ -121,16 +210,38 @@ export default function BuildingDetail() {
 
   return (
     <div className="building-detail-page">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="toast-container" style={{
+          position: "fixed",
+          top: 20,
+          right: 20,
+          zIndex: 9999
+        }}>
+          <div className={`toast toast-${toast.type}`} style={{
+            padding: "12px 20px",
+            borderRadius: 8,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            background: toast.type === "success" ? "#10b981" :
+                       toast.type === "error" ? "#ef4444" :
+                       toast.type === "warning" ? "#f59e0b" : "#3b82f6",
+            color: "#fff",
+            fontWeight: 500,
+            minWidth: 250,
+            animation: "slideIn 0.3s ease"
+          }}>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <Header userName="Student" />
 
-      {/* Purple Header Banner */}
+      {/* HEADER BANNER */}
       <div className="building-header-banner">
         <div className="building-header-content">
           <div className="building-header-left">
-            <button
-              onClick={() => navigate("/buildings")}
-              className="back-button-banner"
-            >
+            <button onClick={() => navigate("/buildings")} className="back-button-banner">
               <ArrowLeft size={20} />
             </button>
             <div>
@@ -138,6 +249,7 @@ export default function BuildingDetail() {
               <p className="building-subtitle">{building?.buildingCode}</p>
             </div>
           </div>
+
           <button
             className="report-issue-button"
             onClick={() =>
@@ -152,25 +264,24 @@ export default function BuildingDetail() {
       </div>
 
       <main className="main-content">
-        {/* Tabs */}
+        {/* TABS */}
         <div className="tabs-container">
           <button
             onClick={() => setActiveTab("active")}
             className={`tab-button ${activeTab === "active" ? "active" : ""}`}
           >
-            Active Issues
-            <span className="tab-badge">{activeIssuesCount}</span>
+            Active Issues <span className="tab-badge">{activeIssuesCount}</span>
           </button>
+
           <button
             onClick={() => setActiveTab("history")}
             className={`tab-button ${activeTab === "history" ? "active" : ""}`}
           >
-            Issue History
-            <span className="tab-badge">{resolvedIssuesCount}</span>
+            Issue History <span className="tab-badge">{resolvedIssuesCount}</span>
           </button>
         </div>
 
-        {/* Search Bar */}
+        {/* SEARCH BAR */}
         <div className="search-container">
           <Search size={20} className="search-icon" />
           <input
@@ -182,48 +293,40 @@ export default function BuildingDetail() {
           />
         </div>
 
-        {/* Priority Filter Chips */}
+        {/* PRIORITY FILTER CHIPS */}
         <div className="filter-chips-container">
           <span className="filter-label">Filter by Priority:</span>
+
           <button
             onClick={() => setSelectedPriority("all")}
-            className={`filter-chip ${
-              selectedPriority === "all" ? "active" : ""
-            }`}
+            className={`filter-chip ${selectedPriority === "all" ? "active" : ""}`}
           >
-            All
-            <span className="chip-badge">{activeIssuesCount}</span>
+            All <span className="chip-badge">{activeIssuesCount}</span>
           </button>
+
           <button
             onClick={() => setSelectedPriority("high")}
-            className={`filter-chip high ${
-              selectedPriority === "high" ? "active" : ""
-            }`}
+            className={`filter-chip high ${selectedPriority === "high" ? "active" : ""}`}
           >
-            High
-            <span className="chip-badge">{highCount}</span>
+            High <span className="chip-badge">{highCount}</span>
           </button>
+
           <button
             onClick={() => setSelectedPriority("medium")}
-            className={`filter-chip medium ${
-              selectedPriority === "medium" ? "active" : ""
-            }`}
+            className={`filter-chip medium ${selectedPriority === "medium" ? "active" : ""}`}
           >
-            Medium
-            <span className="chip-badge">{mediumCount}</span>
+            Medium <span className="chip-badge">{mediumCount}</span>
           </button>
+
           <button
             onClick={() => setSelectedPriority("low")}
-            className={`filter-chip low ${
-              selectedPriority === "low" ? "active" : ""
-            }`}
+            className={`filter-chip low ${selectedPriority === "low" ? "active" : ""}`}
           >
-            Low
-            <span className="chip-badge">{lowCount}</span>
+            Low <span className="chip-badge">{lowCount}</span>
           </button>
         </div>
 
-        {/* Issues List */}
+        {/* ISSUES LIST */}
         <div className="issues-list">
           {issuesLoading ? (
             <div className="loading-issues">Loading issues...</div>
@@ -232,18 +335,19 @@ export default function BuildingDetail() {
           ) : (
             filteredIssues.map((issue) => {
               const priorityColors = getPriorityColor(issue.issuePriority);
-              
-              // Comprehensive reporter check
-              const isReporter = user.id && (
-                issue.reportedById === user.id ||
-                issue.userId === user.id ||
-                issue.reportedBy === user.id ||
-                String(issue.reportedById) === String(user.id) ||
-                String(issue.userId) === String(user.id) ||
-                issue.reportedByEmail === user.email ||
-                issue.email === user.email ||
-                (user.username && issue.reportedByName === user.username)
-              );
+
+              const isReporter =
+                user.id &&
+                (
+                  issue.reportedById === user.id ||
+                  issue.userId === user.id ||
+                  issue.reportedBy === user.id ||
+                  String(issue.reportedById) === String(user.id) ||
+                  String(issue.userId) === String(user.id) ||
+                  issue.reportedByEmail === user.email ||
+                  issue.email === user.email ||
+                  (user.username && issue.reportedByName === user.username)
+                );
 
               return (
                 <div
@@ -252,31 +356,32 @@ export default function BuildingDetail() {
                   style={{ borderLeftColor: priorityColors.border }}
                   onClick={() => setModalIssue(issue)}
                 >
-                  <div 
-                    className="issue-card-content" 
-                    style={{ 
-                      display: "flex", 
-                      alignItems: "flex-start", 
+                  <div
+                    className="issue-card-content"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
                       justifyContent: "space-between",
                       gap: "16px",
                       padding: "16px"
                     }}
                   >
-                    {/* Left: Details */}
+                    {/* LEFT SIDE */}
                     <div className="issue-main" style={{ flex: 1, minWidth: 0 }}>
-                      <div 
-                        className="issue-header" 
-                        style={{ 
-                          display: "flex", 
-                          alignItems: "center", 
-                          flexWrap: "wrap", 
+                      <div
+                        className="issue-header"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
                           gap: "8px",
-                          marginBottom: "8px"
+                          marginBottom: "8px",
+                          flexWrap: "wrap"
                         }}
                       >
-                        <h3 className="issue-title" style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600 }}>
+                        <h3 className="issue-title" style={{ margin: 0 }}>
                           {issue.issueTitle}
                         </h3>
+
                         <span
                           className="priority-badge"
                           style={{
@@ -291,68 +396,51 @@ export default function BuildingDetail() {
                           {issue.issuePriority}
                         </span>
                       </div>
-                      <div
-                        className="issue-meta"
-                        style={{
-                          display: "flex",
-                          alignItems: "center"
-                        }}
-                      >
-                        <div
-                          className="meta-item"
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            fontSize: 15,
-                            color: "#334155",
-                            fontWeight: 500,
-                          }}
-                        >
+
+                      <div className="issue-meta" style={{ display: "flex", alignItems: "center" }}>
+                        <div className="meta-item" style={{ display: "flex", gap: 6, fontSize: 15 }}>
                           <User size={16} />
-                          Reported By:{" "}
-                          <span
-                            style={{
-                              marginLeft: 3,
-                              fontWeight: 600,
-                              color: "#0f172a",
-                            }}
-                          >
+                          Reported By:
+                          <span style={{ fontWeight: 600 }}>
                             {issue.reportedByName || "Unknown"}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right: Date + Reporter Actions */}
-                    <div 
-                      style={{ 
-                        display: "flex", 
-                        flexDirection: "column", 
-                        alignItems: "flex-end", 
-                        gap: "12px", 
-                        minWidth: "150px" 
+                    {/* RIGHT SIDE */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        gap: "12px",
+                        minWidth: "150px"
                       }}
                     >
-                      <div 
-                        className="issue-date" 
-                        style={{ 
-                          color: "#64748b", 
-                          fontSize: 14, 
-                          display: "flex", 
-                          alignItems: "center", 
-                          gap: "4px" 
+                      {/* DATE */}
+                      <div
+                        className="issue-date"
+                        style={{
+                          color: "#64748b",
+                          fontSize: 14,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
                         }}
                       >
                         <Calendar size={14} />
-                        {issue.issueCreatedAt ? new Date(issue.issueCreatedAt).toLocaleDateString() : ""}
+                        {issue.issueCreatedAt
+                          ? new Date(issue.issueCreatedAt).toLocaleDateString()
+                          : ""}
                       </div>
 
+                      {/* REPORTER ACTION BUTTONS */}
                       {isReporter && (
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "nowrap" }}>
+                        <div style={{ display: "flex", gap: "8px" }}>
                           <button
                             className="admin-inline-btn edit"
-                            onClick={e => {
+                            onClick={(e) => {
                               e.stopPropagation();
                               navigate("/buildings/ReportIssue", {
                                 state: {
@@ -362,24 +450,20 @@ export default function BuildingDetail() {
                                 }
                               });
                             }}
+                            title="Edit Issue"
                           >
                             <Edit2 size={16} />
                           </button>
+
                           <button
                             className="admin-inline-btn delete"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (window.confirm("Are you sure you want to delete this issue?")) {
-                                try {
-                                  await deleteIssue(issue.id);
-                                  setIssues(prevIssues => prevIssues.filter(i => i.id !== issue.id));
-                                  alert("Issue deleted successfully!");
-                                } catch (error) {
-                                  console.error("Delete failed:", error);
-                                  alert(error?.response?.data?.message || "Failed to delete issue. Please try again.");
-                                }
-                              }
+                            onClick={(e) => handleDelete(issue.id, e)}
+                            disabled={isDeleting}
+                            style={{
+                              cursor: isDeleting ? "not-allowed" : "pointer",
+                              opacity: isDeleting ? 0.5 : 1
                             }}
+                            title="Delete Issue"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -393,7 +477,7 @@ export default function BuildingDetail() {
           )}
         </div>
 
-        {/* MODAL: View/Edit Issue */}
+        {/* MODAL VIEW */}
         {modalIssue && (
           <UserActiveIssueModal
             issue={modalIssue}
@@ -412,6 +496,19 @@ export default function BuildingDetail() {
           />
         )}
       </main>
+
+      <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

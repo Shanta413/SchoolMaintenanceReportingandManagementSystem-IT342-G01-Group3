@@ -1,13 +1,16 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
+
 import Header from "../components/Header";
 import BuildingCard from "../components/BuildingCard";
 import SearchBar from "../components/SearchBar";
 import FilterDropdown from "../components/FilterDropdown";
 import CampusMapModal from "../components/CampusMapModal";
+
 import "../css/BuildingSelection.css";
 import { getAllBuildings } from "../api/building";
+import useAutoRefresh from "../hooks/useAutoRefresh"; // 🟢 Auto-refresh hook
 
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
@@ -24,35 +27,50 @@ function BuildingSelection() {
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const navigate = useNavigate();
 
-  // 🟢 Auth check
+  // 🟢 AUTH CHECK
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (!token) navigate("/login");
   }, [navigate]);
 
-  // 🟢 Fetch buildings from backend (only active buildings)
-  useEffect(() => {
-    setLoading(true);
+  // 🟢 Fetch function (wrapped in useCallback for auto-refresh stability)
+  const fetchBuildings = useCallback(() => {
     setError(null);
+
     getAllBuildings()
       .then((data) => {
-        // Only show active buildings (admin-created)
-        setBuildings(data.filter((b) => b.buildingIsActive !== false));
+        const activeBuildings = data.filter(
+          (b) => b.buildingIsActive !== false
+        );
+        setBuildings(activeBuildings);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to load buildings.");
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // 🟢 Filter logic (by name/code, and sorting)
+  // 🟢 Initial load
+  useEffect(() => {
+    fetchBuildings();
+  }, [fetchBuildings]);
+
+  // 🔥 AUTO REFRESH EVERY 3 SECONDS
+  useAutoRefresh(fetchBuildings, 3000, true);
+
+  // 🟢 Filter + Sorting
   const filteredBuildings = useMemo(() => {
     let filtered = buildings.filter(
       (b) =>
-        (b.buildingName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (b.buildingCode || "").toLowerCase().includes(searchQuery.toLowerCase())
+        (b.buildingName || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        (b.buildingCode || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
     );
 
     if (priorityFilter) {
@@ -61,6 +79,7 @@ function BuildingSelection() {
           (a.issueCount?.high || 0) +
           (a.issueCount?.medium || 0) +
           (a.issueCount?.low || 0);
+
         const bTotal =
           (b.issueCount?.high || 0) +
           (b.issueCount?.medium || 0) +
@@ -86,7 +105,7 @@ function BuildingSelection() {
     return filtered;
   }, [searchQuery, priorityFilter, buildings]);
 
-  // 👇 Use buildingCode for navigation (not id)
+  // 🟢 Navigation
   const handleBuildingClick = (building) => {
     if (building.buildingCode) {
       navigate(`/buildings/${building.buildingCode}`);
@@ -99,9 +118,7 @@ function BuildingSelection() {
       <main className="main-content">
         <div className="content-wrapper">
           <h1 className="page-title">Select Building</h1>
-          <p className="page-subtitle">
-            Choose a building to view and report issues
-          </p>
+          <p className="page-subtitle">Choose a building to view and report issues</p>
 
           <button className="map-link" onClick={() => setShowMapModal(true)}>
             <MapPin size={16} />
@@ -114,6 +131,7 @@ function BuildingSelection() {
               onChange={setSearchQuery}
               placeholder="Search buildings..."
             />
+
             <FilterDropdown
               value={priorityFilter}
               onChange={setPriorityFilter}
@@ -135,24 +153,27 @@ function BuildingSelection() {
               ) : (
                 filteredBuildings.map((b) => (
                   <BuildingCard
-  key={b.id}
-  building={{
-    id: b.id,
-    name: b.buildingName,      // <-- This is name (smaller, below)
-    subtitle: b.buildingCode,  // <-- This is CODE (should be on top, bigger)
-    image: b.buildingImageUrl,
-    issues: b.issueCount || { high: 0, medium: 0, low: 0 },
-  }}
-  onClick={() => handleBuildingClick(b)}
-/>
-
+                    key={b.id}
+                    building={{
+                      id: b.id,
+                      name: b.buildingName, // small text under code
+                      subtitle: b.buildingCode, // big text on top
+                      image: b.buildingImageUrl,
+                      issues: b.issueCount || { high: 0, medium: 0, low: 0 },
+                    }}
+                    onClick={() => handleBuildingClick(b)}
+                  />
                 ))
               )}
             </div>
           )}
         </div>
       </main>
-      <CampusMapModal isOpen={showMapModal} onClose={() => setShowMapModal(false)} />
+
+      <CampusMapModal
+        isOpen={showMapModal}
+        onClose={() => setShowMapModal(false)}
+      />
     </div>
   );
 }

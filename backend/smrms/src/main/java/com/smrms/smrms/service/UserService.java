@@ -1,11 +1,11 @@
 package com.smrms.smrms.service;
 
-import com.smrms.smrms.dto.ProfileResponse;
+import com. smrms.smrms. dto.ProfileResponse;
 import com.smrms.smrms.dto.ProfileUpdateRequest;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.repository.StudentRepository;
-import com.smrms.smrms.repository.UserRepository;
+import com.smrms.smrms.repository. UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,9 +30,10 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // ✅ Fetch student details if available (via OneToOne relation)
-        Student student = user.getStudent();
+        Student student = user. getStudent();
 
         return new ProfileResponse(
+                user.getId(),  // 🔥 ADD THIS - UUID String
                 user.getFullname(),
                 user.getEmail(),
                 user.getMobileNumber(),
@@ -40,8 +41,8 @@ public class UserService {
                 user.getCreatedAt(),
                 user.getAvatarUrl(),
                 user.getAuthMethod(),
-                student != null ? student.getStudentDepartment() : null,
-                student != null ? student.getStudentIdNumber() : null
+                student != null ? student. getStudentDepartment() : null,
+                student != null ?  student.getStudentIdNumber() : null
         );
     }
 
@@ -60,14 +61,14 @@ public class UserService {
 
         // ✅ Update user fields
         if (request.getFullname() != null && !request.getFullname().isBlank()) {
-            user.setFullname(request.getFullname());
+            user.setFullname(request. getFullname());
         }
 
         if (request.getMobileNumber() != null && !request.getMobileNumber().isBlank()) {
             user.setMobileNumber(request.getMobileNumber());
         }
 
-        if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
+        if (request. getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
             user.setAvatarUrl(request.getAvatarUrl());
         }
 
@@ -91,8 +92,8 @@ public class UserService {
                     .build();
         } else {
             // Update existing student data if provided
-            if (request.getStudentDepartment() != null && !request.getStudentDepartment().isBlank()) {
-                student.setStudentDepartment(request.getStudentDepartment());
+            if (request.getStudentDepartment() != null && !request. getStudentDepartment().isBlank()) {
+                student. setStudentDepartment(request.getStudentDepartment());
             }
             if (request.getStudentIdNumber() != null && !request.getStudentIdNumber().isBlank()) {
                 student.setStudentIdNumber(request.getStudentIdNumber());
@@ -105,14 +106,15 @@ public class UserService {
 
         // ✅ Return updated profile response
         return new ProfileResponse(
+                user.getId(),  // 🔥 ADD THIS - UUID String
                 user.getFullname(),
                 user.getEmail(),
                 user.getMobileNumber(),
                 user.isActive(),
                 user.getCreatedAt(),
                 user.getAvatarUrl(),
-                user.getAuthMethod(),
-                student.getStudentDepartment(),
+                user. getAuthMethod(),
+                student. getStudentDepartment(),
                 student.getStudentIdNumber()
         );
     }
