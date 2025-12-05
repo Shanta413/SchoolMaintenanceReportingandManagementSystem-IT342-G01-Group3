@@ -24,7 +24,7 @@ import java.util.Map;
 @CrossOrigin(origins = {
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://frontend-production-e168.up.railway. app"
+        "https://frontend-production-e168.up.railway.app"
 })
 public class UserController {
 
@@ -42,14 +42,14 @@ public class UserController {
 
             String email = authentication.getName();
             User user = userRepository.findByEmail(email)
-                    . orElseThrow(() -> new RuntimeException("User not found: " + email));
+                    .orElseThrow(() -> new RuntimeException("User not found: " + email));
 
             String studentDepartment = null;
             String studentIdNumber = null;
 
             if (user.getStudent() != null) {
                 studentDepartment = user.getStudent().getStudentDepartment();
-                studentIdNumber = user. getStudent(). getStudentIdNumber();
+                studentIdNumber = user.getStudent().getStudentIdNumber();
             }
 
             ProfileResponse response = new ProfileResponse(
