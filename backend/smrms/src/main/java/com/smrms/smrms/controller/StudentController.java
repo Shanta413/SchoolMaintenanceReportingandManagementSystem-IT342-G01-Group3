@@ -35,7 +35,7 @@ public class StudentController {
     private final IssueRepository issueRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // GET all students with user info
+    // GET all students
     @GetMapping
     public ResponseEntity<List<StudentViewDTO>> getAllStudents() {
         List<Student> students = studentRepository.findAll();
@@ -43,8 +43,9 @@ public class StudentController {
 
         for (Student student : students) {
             User user = student.getUser();
+
             StudentViewDTO dto = StudentViewDTO.builder()
-                    .id(student.getStudentId().toString())
+                    .id(student.getId())
                     .fullname(user.getFullname())
                     .email(user.getEmail())
                     .mobileNumber(user.getMobileNumber())
@@ -53,6 +54,7 @@ public class StudentController {
                     .studentDepartment(student.getStudentDepartment())
                     .studentIdNumber(student.getStudentIdNumber())
                     .build();
+
             studentDTOs.add(dto);
         }
 
@@ -61,13 +63,14 @@ public class StudentController {
 
     // GET student by ID
     @GetMapping("/{id}")
-    public ResponseEntity<StudentViewDTO> getStudentById(@PathVariable Long id) {
+    public ResponseEntity<StudentViewDTO> getStudentById(@PathVariable String id) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
         User user = student.getUser();
+
         StudentViewDTO dto = StudentViewDTO.builder()
-                .id(student.getStudentId().toString())
+                .id(student.getId())
                 .fullname(user.getFullname())
                 .email(user.getEmail())
                 .mobileNumber(user.getMobileNumber())
@@ -84,12 +87,13 @@ public class StudentController {
     @PostMapping
     public ResponseEntity<?> createStudent(@RequestBody StudentViewDTO studentDTO) {
         try {
-            // Check if email exists
+            // Check if email already exists
             if (userRepository.findByEmail(studentDTO.getEmail()).isPresent()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "Email already exists"));
             }
 
+            // Create User
             User user = User.builder()
                     .fullname(studentDTO.getFullname())
                     .email(studentDTO.getEmail())
@@ -99,8 +103,10 @@ public class StudentController {
                     .isActive(true)
                     .createdAt(LocalDateTime.now())
                     .build();
+
             user = userRepository.save(user);
 
+            // Assign STUDENT role
             Role studentRole = roleRepository.findByRoleName("STUDENT")
                     .orElseThrow(() -> new RuntimeException("STUDENT role not found"));
 
@@ -109,17 +115,21 @@ public class StudentController {
                     .role(studentRole)
                     .userRoleCreatedAt(LocalDateTime.now())
                     .build();
+
             userRoleRepository.save(userRole);
 
+            // Create Student
             Student student = Student.builder()
                     .user(user)
                     .studentDepartment(studentDTO.getStudentDepartment())
                     .studentIdNumber(studentDTO.getStudentIdNumber())
                     .build();
+
             student = studentRepository.save(student);
 
+            // Build response DTO
             StudentViewDTO responseDTO = StudentViewDTO.builder()
-                    .id(student.getStudentId().toString())
+                    .id(student.getId())
                     .fullname(user.getFullname())
                     .email(user.getEmail())
                     .mobileNumber(user.getMobileNumber())
@@ -139,7 +149,7 @@ public class StudentController {
 
     // PUT - Update student
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateStudent(@PathVariable Long id, @RequestBody StudentViewDTO studentDTO) {
+    public ResponseEntity<?> updateStudent(@PathVariable String id, @RequestBody StudentViewDTO studentDTO) {
         try {
             Student student = studentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -155,8 +165,9 @@ public class StudentController {
             studentRepository.save(student);
 
             User user = student.getUser();
+
             StudentViewDTO responseDTO = StudentViewDTO.builder()
-                    .id(student.getStudentId().toString())
+                    .id(student.getId())
                     .fullname(user.getFullname())
                     .email(user.getEmail())
                     .mobileNumber(user.getMobileNumber())
@@ -177,32 +188,37 @@ public class StudentController {
     // DELETE - Delete student
     @DeleteMapping("/{id}")
     @Transactional
-    public ResponseEntity<?> deleteStudent(@PathVariable Long id) {
+    public ResponseEntity<?> deleteStudent(@PathVariable String id) {
         try {
             Student student = studentRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Student not found"));
 
             User user = student.getUser();
 
+            // Handle Issues (reporter/resolver)
             issueRepository.findAll().forEach(issue -> {
-                if (issue.getCreatedBy() != null &&
-                        issue.getCreatedBy().getUserId().equals(user.getUserId())) {
-                    issue.setCreatedBy(null);
+                if (issue.getReportedBy() != null &&
+                        issue.getReportedBy().getId().equals(user.getId())) {
+                    issue.setReportedBy(null);
                     issueRepository.save(issue);
                 }
 
-                if (issue.getAssignedTo() != null &&
-                        issue.getAssignedTo().getUserId().equals(user.getUserId())) {
-                    issue.setAssignedTo(null);
+                if (issue.getResolvedBy() != null &&
+                        issue.getResolvedBy().getId().equals(user.getId())) {
+                    issue.setResolvedBy(null);
                     issueRepository.save(issue);
                 }
             });
 
+            // Delete UserRoles
             userRoleRepository.findAll().stream()
-                    .filter(ur -> ur.getUser().getUserId().equals(user.getUserId()))
+                    .filter(ur -> ur.getUser().getId().equals(user.getId()))
                     .forEach(userRoleRepository::delete);
 
+            // Delete Student record
             studentRepository.delete(student);
+
+            // Delete User
             userRepository.delete(user);
 
             return ResponseEntity.ok(Map.of("message", "Student deleted successfully"));
