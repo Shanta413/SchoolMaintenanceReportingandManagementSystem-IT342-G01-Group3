@@ -1,3 +1,4 @@
+// src/pages/MyReports.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -5,8 +6,7 @@ import Header from "../components/Header";
 import { getAllIssues, deleteIssue } from "../api/issues";
 
 import "../css/MyReports.css";
-
-import useAutoRefresh from "../hooks/useAutoRefresh"; // 🔥 Auto-refresh
+import useAutoRefresh from "../hooks/useAutoRefresh";
 
 export default function MyReports() {
   const navigate = useNavigate();
@@ -57,10 +57,9 @@ export default function MyReports() {
     fetchMyIssues();
   }, [fetchMyIssues]);
 
-  // 🔥 Auto-refresh every 3 seconds
+  // Auto-refresh every 3 seconds
   useAutoRefresh(fetchMyIssues, 3000, true);
 
-  // Status helper
   const isResolvedStatus = (status) =>
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
@@ -116,7 +115,6 @@ export default function MyReports() {
       return matchesTab && matchesPriority && matchesBuilding && matchesSearch;
     });
 
-    // Sorting
     if (sortBy === "recent") {
       filtered.sort(
         (a, b) => new Date(b.issueCreatedAt) - new Date(a.issueCreatedAt)
@@ -200,9 +198,7 @@ export default function MyReports() {
           {/* STATS */}
           <div className="stats-grid">
             <div className="stat-card">
-              <div className="stat-icon total">
-                📄
-              </div>
+              <div className="stat-icon total">📄</div>
               <div className="stat-content">
                 <p className="stat-label">Total Reports</p>
                 <p className="stat-value">{totalReports}</p>
@@ -359,15 +355,23 @@ export default function MyReports() {
                     </p>
                   </div>
 
-                  <div className="report-actions">
-                    <button className="action-btn edit-btn" onClick={() => handleEdit(issue)}>
-                      Edit
-                    </button>
+                  {!isResolvedStatus(issue.issueStatus) && (
+                    <div className="report-actions">
+                      <button
+                        className="action-btn edit-btn"
+                        onClick={() => handleEdit(issue)}
+                      >
+                        Edit
+                      </button>
 
-                    <button className="action-btn delete-btn" onClick={() => handleDelete(issue.id)}>
-                      Delete
-                    </button>
-                  </div>
+                      <button
+                        className="action-btn delete-btn"
+                        onClick={() => handleDelete(issue.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
