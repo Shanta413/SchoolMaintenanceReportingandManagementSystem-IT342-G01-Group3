@@ -154,28 +154,32 @@ public class IssueService {
             System.out.println("[UPDATE] Uploaded PHOTO URL: " + newPhotoUrl);
         }
 
-        // RESOLVER STAFF
-        if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
-            User resolver = userRepository.findById(req.getResolvedByStaffId())
-                    .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
-
-            issue.setResolvedBy(resolver);
-
-            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus()) ||
-                    "FIXED".equalsIgnoreCase(req.getIssueStatus())) {
-                issue.setIssueCompletedAt(Instant.now());
-            }
-        } else {
+        // ============ FIXED LOGIC ============
+        // Handle status change to ACTIVE (revert resolved issue)
+        if ("ACTIVE".equalsIgnoreCase(req.getIssueStatus())) {
+            System.out.println("[UPDATE] Status changed to ACTIVE - clearing resolver and report file");
             issue.setResolvedBy(null);
             issue.setIssueCompletedAt(null);
+            issue.setIssueReportFile(null);  // ✅ Clear the report file
         }
-
-        // FILE UPLOAD
-        if (reportFile != null && !reportFile.isEmpty()) {
-            System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
-            String newUrl = storage.upload(reportFile, "document");
-            issue.setIssueReportFile(newUrl);
-            System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
+        // Handle FIXED status with resolver
+        else if ("FIXED".equalsIgnoreCase(req.getIssueStatus())) {
+            // Set resolver if provided
+            if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
+                User resolver = userRepository.findById(req.getResolvedByStaffId())
+                        .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
+                issue.setResolvedBy(resolver);
+                issue.setIssueCompletedAt(Instant.now());
+                System.out.println("[UPDATE] Resolver set to: " + resolver.getFullname());
+            }
+            
+            // Handle report file upload for FIXED status
+            if (reportFile != null && !reportFile.isEmpty()) {
+                System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
+                String newUrl = storage.upload(reportFile, "document");
+                issue.setIssueReportFile(newUrl);
+                System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
+            }
         }
 
         issueRepository.save(issue);
