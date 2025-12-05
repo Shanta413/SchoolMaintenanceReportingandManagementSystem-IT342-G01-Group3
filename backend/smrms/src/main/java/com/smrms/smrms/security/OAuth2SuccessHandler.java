@@ -1,16 +1,16 @@
-package com. smrms.smrms. security;
+package com.smrms.smrms.security;
 
 import com.smrms.smrms.entity.Role;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.entity.UserRole;
-import com.smrms.smrms.repository.RoleRepository;
+import com. smrms.smrms. repository.RoleRepository;
 import com.smrms.smrms.repository.StudentRepository;
-import com. smrms.smrms. repository.UserRepository;
-import com.smrms.smrms.repository.UserRoleRepository;
+import com.smrms.smrms.repository.UserRepository;
+import com.smrms. smrms.repository.UserRoleRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet. http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet. http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -20,9 +20,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java. io.IOException;
-import java. io. InputStream;
-import java.io. OutputStream;
-import java.net. HttpURLConnection;
+import java. io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java. util.UUID;
@@ -46,15 +46,16 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${supabase.service_key}")
     private String supabaseServiceKey;
 
-    // Change this if your frontend base URL differs in prod
-    private static final String FRONTEND_LOGIN_REDIRECT = "https://frontend-production-e168.up.railway.app/login";
+    // ✅ ADD THIS - Read frontend URL from application.properties
+    @Value("${frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
 
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+        OAuth2User oAuth2User = (OAuth2User) authentication. getPrincipal();
 
         String email   = oAuth2User.getAttribute("email");
         String name    = oAuth2User.getAttribute("name");
@@ -79,10 +80,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         });
 
         // Upload avatar if missing
-        if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && picture != null) {
+        if ((user.getAvatarUrl() == null || user.getAvatarUrl(). isBlank()) && picture != null) {
             try {
                 String uploadedUrl = uploadImageToSupabase(picture);
-                user.setAvatarUrl(uploadedUrl);
+                user. setAvatarUrl(uploadedUrl);
                 System.out.println("✅ Avatar uploaded to Supabase: " + uploadedUrl);
             } catch (Exception e) {
                 if (user.getAvatarUrl() == null || user.getAvatarUrl(). isBlank()) {
@@ -103,7 +104,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 ));
 
         if (! userRoleRepository.existsByUserAndRole(user, studentRole)) {
-            userRoleRepository.save(UserRole.builder()
+            userRoleRepository. save(UserRole.builder()
                     .user(user)
                     .role(studentRole)
                     .userRoleCreatedAt(LocalDateTime. now())
@@ -111,7 +112,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         // Create student profile if missing
-        studentRepository.findByUser(user). orElseGet(() -> {
+        studentRepository. findByUser(user). orElseGet(() -> {
             Student student = Student.builder()
                     .user(user)
                     .studentDepartment("BSIT")
@@ -126,19 +127,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .map(ur -> ur.getRole().getRoleName())
                 .orElse("STUDENT");
 
-        // 🔥 Redirect to correct frontend based on environment
-        String frontendUrl = environment.equals("production")
-                ? "https://frontend-production-e168.up.railway.app"
-                : "http://localhost:5173";
-
-        String redirect = frontendUrl + "/login?token=" + token + "&role=" + roleName;
-        response.sendRedirect(redirect);
+        // ✅ FIXED - Use the injected frontendUrl from properties
+        String redirect = frontendUrl + "/login? token=" + token + "&role=" + roleName;
+        response. sendRedirect(redirect);
     }
 
     private String uploadImageToSupabase(String imageUrl) throws IOException {
-        // ...  existing upload code (unchanged) ...
         URL url = new URL(imageUrl);
-        HttpURLConnection connection = (HttpURLConnection) url. openConnection();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setInstanceFollowRedirects(true);
         connection.setRequestMethod("GET");
         connection.setRequestProperty("User-Agent", "SMRMS/1.0");
@@ -169,7 +165,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         uploadConn.setReadTimeout(8000);
 
         uploadConn.setRequestProperty("Authorization", "Bearer " + supabaseServiceKey);
-        uploadConn.setRequestProperty("apikey", supabaseServiceKey);
+        uploadConn. setRequestProperty("apikey", supabaseServiceKey);
         uploadConn.setRequestProperty("Content-Type", "image/jpeg");
         uploadConn.setRequestProperty("x-upsert", "true");
 
