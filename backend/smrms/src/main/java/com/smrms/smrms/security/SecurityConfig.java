@@ -18,7 +18,9 @@ import org.springframework.security. web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors. UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
+
 
 import java.util.Arrays;
 import java.util.List;
@@ -43,7 +45,8 @@ public class SecurityConfig {
 
                 // 🚦 Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        . requestMatchers(
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(
                                 "/api/auth/**",     // Local login/register
                                 "/oauth2/**",       // Google OAuth2 endpoints
                                 "/login/**",
@@ -111,24 +114,18 @@ public class SecurityConfig {
 
     // ✅ CORS setup: allow BOTH localhost AND Railway production
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        // 🔥 Allow BOTH localhost (dev) AND Railway (production)
-        config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",                                    // Local dev
-                "http://localhost:3000",                                    // Alternative local
-                "https://frontend-production-e168.up.railway.app"          // 🚀 Production
-        ));
-
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "*"));
-        config.setAllowCredentials(true);
-        config.setExposedHeaders(Arrays.asList("Authorization"));
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of(
+        "https://frontend-production-e168.up.railway.app",
+        "http://localhost:5173"
+    ));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*")); // <-- Allow all headers for debugging
+    config.setExposedHeaders(List.of("*")); // <-- Allow all exposed headers
+    config.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
+}
 }

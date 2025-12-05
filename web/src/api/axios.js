@@ -1,9 +1,9 @@
 import axios from "axios";
 
-// ✅ Base backend URL
-const BASE_URL = "http://localhost:8080/api";
+// ✅ Set your actual backend URL here!
+const BASE_URL = "https://backend-production-4aa1.up.railway.app/api";
 
-// ✅ Create Axios instance
+// ✅ Create Axios instance with baseURL and default headers
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -12,7 +12,7 @@ const api = axios.create({
 // ✅ Automatically attach JWT token for every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("authToken"); // <-- correct key
+    const token = localStorage.getItem("authToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

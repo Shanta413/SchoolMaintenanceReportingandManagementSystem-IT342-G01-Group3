@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
 import {
   Mail,
   Phone,
@@ -12,8 +11,7 @@ import {
 } from "lucide-react";
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = "http://localhost:8080/api";
+import api from "../api/axios"; // 🟢 Use your Axios instance
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -63,10 +61,8 @@ const ProfilePage = () => {
       return;
     }
 
-    axios
-      .get(`${API_BASE}/user/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/user/profile")
       .then((res) => {
         const d = res.data || {};
         const payload = {
@@ -146,11 +142,8 @@ const ProfilePage = () => {
     const fd = new FormData();
     fd.append("file", file);
 
-    const { data } = await axios.put(`${API_BASE}/user/profile/avatar`, fd, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
+    const { data } = await api.put("/user/profile/avatar", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
 
     // Backend returns ProfileResponse; it includes avatarUrl
@@ -175,14 +168,12 @@ const ProfilePage = () => {
         const fd = new FormData();
         fd.append("file", selectedFile);
 
-        await axios.put(`${API_BASE}/user/profile/avatar`, fd, {
-          headers: { Authorization: `Bearer ${token}` },
+        await api.put("/user/profile/avatar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
 
         // IMPORTANT: re-fetch the fresh profile so state has the new Supabase URL
-        const refreshed = await axios.get(`${API_BASE}/user/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const refreshed = await api.get("/user/profile");
         setFormData((prev) => ({
           ...prev,
           fullname: refreshed.data.fullname || prev.fullname,
@@ -219,9 +210,7 @@ const ProfilePage = () => {
         payload.password = password;
       }
 
-      await axios.put(`${API_BASE}/user/profile`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.put("/user/profile", payload);
 
       showToast("Profile updated successfully!", "success");
       setFormData((prev) => ({ ...prev, password: "" }));

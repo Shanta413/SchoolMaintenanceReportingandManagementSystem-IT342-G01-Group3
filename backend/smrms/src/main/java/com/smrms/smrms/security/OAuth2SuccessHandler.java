@@ -46,9 +46,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${supabase.service_key}")
     private String supabaseServiceKey;
 
-    // 🔥 Detect environment and redirect accordingly
-    @Value("${app.environment:development}")
-    private String environment;
+    // Change this if your frontend base URL differs in prod
+    private static final String FRONTEND_LOGIN_REDIRECT = "https://frontend-production-e168.up.railway.app/login";
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,

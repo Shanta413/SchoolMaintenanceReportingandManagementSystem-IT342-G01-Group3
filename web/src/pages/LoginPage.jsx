@@ -39,11 +39,11 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await fetch("https://backend-production-4aa1.up.railway.app/api/auth/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email, password }),
+});
 
       if (!res.ok) throw new Error("Invalid credentials");
 
@@ -79,7 +79,7 @@ export function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = "https://backend-production-4aa1.up.railway.app/oauth2/authorization/google";
   };
 
   const handleRegisterClick = (e) => {
