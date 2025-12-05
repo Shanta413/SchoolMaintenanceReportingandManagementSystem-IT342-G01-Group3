@@ -16,24 +16,25 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/staff")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // ⬅️ Admin-only
+@PreAuthorize("hasRole('ADMIN')")
 public class MaintenanceStaffController {
 
     private final MaintenanceStaffRepository staffRepo;
     private final UserRepository userRepo;
     private final RoleRepository roleRepo;
     private final UserRoleRepository userRoleRepo;
+    private final IssueRepository issueRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // GET: list (DTO)
+    // GET: list
     @GetMapping
     public ResponseEntity<List<MaintenanceStaffViewDTO>> list() {
         return ResponseEntity.ok(staffRepo.findAllStaffViews());
     }
 
-    // GET: one (DTO)
+    // GET: one
     @GetMapping("/{id}")
     public ResponseEntity<MaintenanceStaffViewDTO> getOne(@PathVariable String id) {
         return staffRepo.findById(id)
@@ -54,103 +55,154 @@ public class MaintenanceStaffController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // POST: create (auto-create LOCAL user if needed, assign MAINTENANCE_STAFF role)
+    // POST: create
     @PostMapping
     @Transactional
     public ResponseEntity<?> create(@RequestBody MaintenanceStaffUpsertRequest req) {
-        if (req.getEmail() == null || req.getEmail().isBlank())
-            return ResponseEntity.badRequest().body("Email is required");
-        if (req.getStaffId() == null || req.getStaffId().isBlank())
-            return ResponseEntity.badRequest().body("Staff ID is required");
-        if (staffRepo.existsByStaffId(req.getStaffId()))
-            return ResponseEntity.badRequest().body("Staff ID already exists");
 
-        // user: reuse or create
+        if (req.getEmail() == null || req.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("Email is required");
+        }
+
+        if (req.getStaffId() == null || req.getStaffId().isBlank()) {
+            return ResponseEntity.badRequest().body("Staff ID is required");
+        }
+
+        if (staffRepo.existsByStaffId(req.getStaffId())) {
+            return ResponseEntity.badRequest().body("Staff ID already exists");
+        }
+
+        // user: reuse if existing or create new
         User user = userRepo.findByEmail(req.getEmail()).orElseGet(() -> {
-            String raw = (req.getPassword() != null && !req.getPassword().isBlank())
-                    ? req.getPassword() : "password123";
-            User nu = User.builder()
+            String pwd = (req.getPassword() != null && !req.getPassword().isBlank())
+                    ? req.getPassword()
+                    : "password123";
+
+            User newUser = User.builder()
                     .fullname(Optional.ofNullable(req.getFullname()).orElse("Maintenance Staff"))
                     .email(req.getEmail())
-                    .password(passwordEncoder.encode(raw))
+                    .password(passwordEncoder.encode(pwd))
                     .mobileNumber(req.getMobileNumber())
                     .authMethod("LOCAL")
                     .isActive(true)
                     .createdAt(LocalDateTime.now())
                     .build();
-            return userRepo.save(nu);
+
+            return userRepo.save(newUser);
         });
 
-        // ensure role MAINTENANCE_STAFF
+        // ensure role exists
         Role staffRole = roleRepo.findByRoleName("MAINTENANCE_STAFF")
-                .orElseGet(() -> roleRepo.save(Role.builder()
-                        .roleName("MAINTENANCE_STAFF")
-                        .roleCreatedAt(LocalDateTime.now())
-                        .build()));
+                .orElseGet(() -> roleRepo.save(
+                        Role.builder()
+                                .roleName("MAINTENANCE_STAFF")
+                                .roleCreatedAt(LocalDateTime.now())
+                                .build()
+                ));
+
+        // assign role if not yet assigned
         if (!userRoleRepo.existsByUserAndRole(user, staffRole)) {
-            userRoleRepo.save(UserRole.builder()
-                    .user(user)
-                    .role(staffRole)
-                    .userRoleCreatedAt(LocalDateTime.now())
-                    .build());
+            userRoleRepo.save(
+                    UserRole.builder()
+                            .user(user)
+                            .role(staffRole)
+                            .userRoleCreatedAt(LocalDateTime.now())
+                            .build()
+            );
         }
 
-        // create staff row (if not existing for this user)
-        staffRepo.findByUser(user).ifPresent(ms -> {
-            throw new RuntimeException("User already linked to a maintenance staff record");
-        });
+        if (staffRepo.findByUser(user).isPresent()) {
+            return ResponseEntity.badRequest().body("User is already linked to a maintenance staff record");
+        }
 
         MaintenanceStaff ms = MaintenanceStaff.builder()
                 .user(user)
                 .staffId(req.getStaffId())
                 .build();
+
         staffRepo.save(ms);
 
         return ResponseEntity.ok("Maintenance staff created");
     }
 
-    // PUT: update (name/mobile/password/staffId)
+    // PUT: update
     @PutMapping("/{id}")
     @Transactional
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody MaintenanceStaffUpsertRequest req) {
-        Optional<MaintenanceStaff> opt = staffRepo.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.notFound().build();
 
-        MaintenanceStaff ms = opt.get();
+        Optional<MaintenanceStaff> optional = staffRepo.findById(id);
+        if (optional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        MaintenanceStaff ms = optional.get();
         User user = ms.getUser();
 
-        if (req.getFullname() != null && !req.getFullname().isBlank()) user.setFullname(req.getFullname());
-        if (req.getMobileNumber() != null && !req.getMobileNumber().isBlank()) user.setMobileNumber(req.getMobileNumber());
+        // update user fields
+        if (req.getFullname() != null && !req.getFullname().isBlank()) {
+            user.setFullname(req.getFullname());
+        }
+
+        if (req.getMobileNumber() != null && !req.getMobileNumber().isBlank()) {
+            user.setMobileNumber(req.getMobileNumber());
+        }
+
         if (req.getPassword() != null && !req.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(req.getPassword()));
             user.setPasswordUpdatedAt(LocalDateTime.now());
         }
-        user.setUpdateAt(LocalDateTime.now());
+
+        user.setUpdatedAt(LocalDateTime.now());
         userRepo.save(user);
 
+        // update staff ID
         if (req.getStaffId() != null && !req.getStaffId().isBlank()) {
-            if (!req.getStaffId().equals(ms.getStaffId()) && staffRepo.existsByStaffId(req.getStaffId()))
+
+            if (!req.getStaffId().equals(ms.getStaffId()) && staffRepo.existsByStaffId(req.getStaffId())) {
                 return ResponseEntity.badRequest().body("Staff ID already exists");
+            }
+
             ms.setStaffId(req.getStaffId());
         }
+
         staffRepo.save(ms);
 
         return ResponseEntity.ok("Maintenance staff updated");
     }
 
-    // DELETE: remove staff + linked user (like Student delete)
+    // DELETE: handle FK constraints properly
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity<?> delete(@PathVariable String id) {
-        Optional<MaintenanceStaff> opt = staffRepo.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.status(404).body("Maintenance staff not found");
 
-        MaintenanceStaff ms = opt.get();
-        User u = ms.getUser();
+        Optional<MaintenanceStaff> optional = staffRepo.findById(id);
+        if (optional.isEmpty()) {
+            return ResponseEntity.status(404).body("Maintenance staff not found");
+        }
 
-        // delete both
-        userRepo.delete(u);          // cascades user_roles, student (if any), etc.
+        MaintenanceStaff ms = optional.get();
+        User user = ms.getUser();
+
+        // nullify foreign references in issues table
+        issueRepository.findAll().forEach(issue -> {
+            if (issue.getReportedBy() != null && issue.getReportedBy().getId().equals(user.getId())) {
+                issue.setReportedBy(null);
+                issueRepository.save(issue);
+            }
+
+            if (issue.getResolvedBy() != null && issue.getResolvedBy().getId().equals(user.getId())) {
+                issue.setResolvedBy(null);
+                issueRepository.save(issue);
+            }
+        });
+
+        // delete user-role relationship
+        userRoleRepo.findAll().stream()
+                .filter(ur -> ur.getUser().getId().equals(user.getId()))
+                .forEach(userRoleRepo::delete);
+
         staffRepo.delete(ms);
+        userRepo.delete(user);
         staffRepo.flush();
 
         return ResponseEntity.ok("Maintenance staff and linked user deleted");
