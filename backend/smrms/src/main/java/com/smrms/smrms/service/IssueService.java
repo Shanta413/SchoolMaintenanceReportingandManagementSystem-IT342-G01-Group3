@@ -29,15 +29,12 @@ public class IssueService {
             MultipartFile reportFile
     ) throws Exception {
 
-        // Find user by email
         User reporter = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Find building by ID
         Building building = buildingRepository.findById(req.getBuildingId())
                 .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingId()));
 
-        // Upload image
         String photoUrl = null;
         if (photo != null && !photo.isEmpty()) {
             System.out.println("[CREATE] Uploading ISSUE PHOTO: " + photo.getOriginalFilename());
@@ -45,7 +42,6 @@ public class IssueService {
             System.out.println("[CREATE] Uploaded PHOTO URL: " + photoUrl);
         }
 
-        // Upload PDF/doc file
         String reportUrl = null;
         if (reportFile != null && !reportFile.isEmpty()) {
             System.out.println("[CREATE] Uploading REPORT FILE: " + reportFile.getOriginalFilename());
@@ -55,7 +51,6 @@ public class IssueService {
             System.out.println("[CREATE] No report file uploaded.");
         }
 
-        // Build and save issue
         Issue issue = Issue.builder()
                 .reportedBy(reporter)
                 .building(building)
@@ -114,6 +109,7 @@ public class IssueService {
             String id,
             IssueUpdateRequest req,
             String editorEmail,
+            MultipartFile photo,
             MultipartFile reportFile
     ) throws Exception {
 
@@ -122,6 +118,7 @@ public class IssueService {
         System.out.println("Received Status: " + req.getIssueStatus());
         System.out.println("Resolver Staff Id: " + req.getResolvedByStaffId());
         System.out.println("Building Code: " + req.getBuildingCode());
+        System.out.println("Photo file: " + (photo != null ? photo.getOriginalFilename() : "null"));
         System.out.println("Report file: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
         System.out.println("===================================");
 
@@ -140,18 +137,25 @@ public class IssueService {
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // BUILDING UPDATE
+        // BUILDING
         if (req.getBuildingCode() != null && !req.getBuildingCode().isBlank()) {
             Building newBuilding = buildingRepository.findByBuildingCode(req.getBuildingCode())
                     .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingCode()));
-
             issue.setBuilding(newBuilding);
             issue.setIssueLocation(newBuilding.getBuildingCode());
+            System.out.println("[UPDATE] Building changed to: " + newBuilding.getBuildingName() + " (" + newBuilding.getBuildingCode() + ")");
+        }
+
+        // PHOTO UPLOAD
+        if (photo != null && !photo.isEmpty()) {
+            System.out.println("[UPDATE] Uploading NEW PHOTO: " + photo.getOriginalFilename());
+            String newPhotoUrl = storage.upload(photo, "image");
+            issue.setIssuePhotoUrl(newPhotoUrl);
+            System.out.println("[UPDATE] Uploaded PHOTO URL: " + newPhotoUrl);
         }
 
         // RESOLVER STAFF
         if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
-
             User resolver = userRepository.findById(req.getResolvedByStaffId())
                     .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
 
@@ -161,7 +165,6 @@ public class IssueService {
                     "FIXED".equalsIgnoreCase(req.getIssueStatus())) {
                 issue.setIssueCompletedAt(Instant.now());
             }
-
         } else {
             issue.setResolvedBy(null);
             issue.setIssueCompletedAt(null);
@@ -230,8 +233,8 @@ public class IssueService {
                 .issueCompletedAt(i.getIssueCompletedAt())
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
-                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
-                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
+                .reportedById(i.getReportedBy().getId())
+                .reportedByName(i.getReportedBy().getFullname())
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();

@@ -1,3 +1,4 @@
+// src/pages/BuildingDetail.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, User, Calendar, Edit2, Trash2 } from "lucide-react";
@@ -27,14 +28,12 @@ export default function BuildingDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [modalIssue, setModalIssue] = useState(null);
 
-  // Toast notification
   const [toast, setToast] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Toast helper
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
@@ -63,12 +62,11 @@ export default function BuildingDetail() {
   }, [buildingCode]);
 
   // ================================
-  // FETCH ISSUES (AUTO-REFRESH SAFE)
+  // FETCH ISSUES
   // ================================
   const fetchIssues = useCallback(() => {
     if (!building?.id) return;
 
-    // Only show loading spinner on initial load
     if (isInitialLoad) {
       setIssuesLoading(true);
     }
@@ -77,21 +75,15 @@ export default function BuildingDetail() {
       .then((data) => {
         setIssues(data);
         console.log("✅ Issues loaded:", data.length);
-        if (isInitialLoad) {
-          setIsInitialLoad(false);
-        }
+        if (isInitialLoad) setIsInitialLoad(false);
       })
       .catch((err) => {
         console.error("❌ Failed to load issues:", err);
         setIssues([]);
-        if (isInitialLoad) {
-          showToast("error", "Failed to load issues");
-        }
+        if (isInitialLoad) showToast("error", "Failed to load issues");
       })
       .finally(() => {
-        if (isInitialLoad) {
-          setIssuesLoading(false);
-        }
+        if (isInitialLoad) setIssuesLoading(false);
       });
   }, [building, isInitialLoad]);
 
@@ -99,7 +91,6 @@ export default function BuildingDetail() {
     fetchIssues();
   }, [fetchIssues]);
 
-  // 🔥 AUTO-REFRESH ISSUES EVERY 3 SECONDS
   useAutoRefresh(fetchIssues, 3000, true);
 
   // ================================
@@ -122,7 +113,7 @@ export default function BuildingDetail() {
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
   // ================================
-  // FILTERING + COUNTS
+  // FILTER & STATS
   // ================================
   const filteredIssues = issues.filter((issue) => {
     const isActive = !isResolvedStatus(issue.issueStatus);
@@ -141,8 +132,8 @@ export default function BuildingDetail() {
     (i) => !isResolvedStatus(i.issueStatus)
   ).length;
 
-  const resolvedIssuesCount = issues.filter((i) =>
-    isResolvedStatus(i.issueStatus)
+  const resolvedIssuesCount = issues.filter(
+    (i) => isResolvedStatus(i.issueStatus)
   ).length;
 
   const highCount = issues.filter(
@@ -162,23 +153,19 @@ export default function BuildingDetail() {
   // ================================
   const handleDelete = async (issueId, e) => {
     e.stopPropagation();
-    
-    if (!window.confirm("Are you sure you want to delete this issue?")) {
-      return;
-    }
+
+    if (!window.confirm("Are you sure you want to delete this issue?")) return;
 
     setIsDeleting(true);
-    console.log("🗑️ Deleting issue:", issueId);
 
     try {
       await deleteIssue(issueId);
       setIssues((prev) => prev.filter((i) => i.id !== issueId));
-      console.log("✅ Issue deleted successfully");
       showToast("success", "Issue deleted successfully");
     } catch (error) {
-      console.error("❌ Failed to delete issue:", error);
       const errorMsg =
-        error?.response?.data?.message || "Failed to delete issue. Please try again.";
+        error?.response?.data?.message ||
+        "Failed to delete issue. Please try again.";
       showToast("error", errorMsg);
     } finally {
       setIsDeleting(false);
@@ -210,26 +197,32 @@ export default function BuildingDetail() {
 
   return (
     <div className="building-detail-page">
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
-        <div className="toast-container" style={{
-          position: "fixed",
-          top: 20,
-          right: 20,
-          zIndex: 9999
-        }}>
-          <div className={`toast toast-${toast.type}`} style={{
-            padding: "12px 20px",
-            borderRadius: 8,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            background: toast.type === "success" ? "#10b981" :
-                       toast.type === "error" ? "#ef4444" :
-                       toast.type === "warning" ? "#f59e0b" : "#3b82f6",
-            color: "#fff",
-            fontWeight: 500,
-            minWidth: 250,
-            animation: "slideIn 0.3s ease"
-          }}>
+        <div
+          className="toast-container"
+          style={{
+            position: "fixed",
+            top: 20,
+            right: 20,
+            zIndex: 9999
+          }}
+        >
+          <div
+            className={`toast toast-${toast.type}`}
+            style={{
+              padding: "12px 20px",
+              borderRadius: 8,
+              background:
+                toast.type === "success"
+                  ? "#10b981"
+                  : toast.type === "error"
+                  ? "#ef4444"
+                  : "#3b82f6",
+              color: "#fff",
+              fontWeight: 500,
+            }}
+          >
             {toast.message}
           </div>
         </div>
@@ -277,7 +270,8 @@ export default function BuildingDetail() {
             onClick={() => setActiveTab("history")}
             className={`tab-button ${activeTab === "history" ? "active" : ""}`}
           >
-            Issue History <span className="tab-badge">{resolvedIssuesCount}</span>
+            Issue History{" "}
+            <span className="tab-badge">{resolvedIssuesCount}</span>
           </button>
         </div>
 
@@ -293,7 +287,7 @@ export default function BuildingDetail() {
           />
         </div>
 
-        {/* PRIORITY FILTER CHIPS */}
+        {/* FILTERS */}
         <div className="filter-chips-container">
           <span className="filter-label">Filter by Priority:</span>
 
@@ -334,7 +328,7 @@ export default function BuildingDetail() {
             <div className="no-issues">No issues found.</div>
           ) : (
             filteredIssues.map((issue) => {
-              const priorityColors = getPriorityColor(issue.issuePriority);
+              const colors = getPriorityColor(issue.issuePriority);
 
               const isReporter =
                 user.id &&
@@ -353,7 +347,7 @@ export default function BuildingDetail() {
                 <div
                   key={issue.id}
                   className="issue-card"
-                  style={{ borderLeftColor: priorityColors.border }}
+                  style={{ borderLeftColor: colors.border }}
                   onClick={() => setModalIssue(issue)}
                 >
                   <div
@@ -366,78 +360,38 @@ export default function BuildingDetail() {
                       padding: "16px"
                     }}
                   >
-                    {/* LEFT SIDE */}
-                    <div className="issue-main" style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        className="issue-header"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginBottom: "8px",
-                          flexWrap: "wrap"
-                        }}
-                      >
-                        <h3 className="issue-title" style={{ margin: 0 }}>
-                          {issue.issueTitle}
-                        </h3>
-
+                    <div className="issue-main">
+                      <div className="issue-header">
+                        <h3 className="issue-title">{issue.issueTitle}</h3>
                         <span
                           className="priority-badge"
                           style={{
-                            background: priorityColors.bg,
-                            color: priorityColors.text,
-                            padding: "4px 12px",
-                            borderRadius: "12px",
-                            fontSize: "12px",
-                            fontWeight: 600
+                            background: colors.bg,
+                            color: colors.text,
                           }}
                         >
                           {issue.issuePriority}
                         </span>
                       </div>
 
-                      <div className="issue-meta" style={{ display: "flex", alignItems: "center" }}>
-                        <div className="meta-item" style={{ display: "flex", gap: 6, fontSize: 15 }}>
-                          <User size={16} />
-                          Reported By:
-                          <span style={{ fontWeight: 600 }}>
-                            {issue.reportedByName || "Unknown"}
-                          </span>
-                        </div>
+                      <div className="issue-meta">
+                        <User size={16} />
+                        <span style={{ fontWeight: 600 }}>
+                          {issue.reportedByName || "Unknown"}
+                        </span>
                       </div>
                     </div>
 
-                    {/* RIGHT SIDE */}
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-end",
-                        gap: "12px",
-                        minWidth: "150px"
-                      }}
-                    >
-                      {/* DATE */}
-                      <div
-                        className="issue-date"
-                        style={{
-                          color: "#64748b",
-                          fontSize: 14,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
+                    {/* Right side */}
+                    <div className="issue-right">
+                      <div className="issue-date">
                         <Calendar size={14} />
-                        {issue.issueCreatedAt
-                          ? new Date(issue.issueCreatedAt).toLocaleDateString()
-                          : ""}
+                        {issue.issueCreatedAt &&
+                          new Date(issue.issueCreatedAt).toLocaleDateString()}
                       </div>
 
-                      {/* REPORTER ACTION BUTTONS */}
-                      {isReporter && (
-                        <div style={{ display: "flex", gap: "8px" }}>
+                      {isReporter && !isResolvedStatus(issue.issueStatus) && (
+                        <div className="issue-actions">
                           <button
                             className="admin-inline-btn edit"
                             onClick={(e) => {
@@ -459,10 +413,6 @@ export default function BuildingDetail() {
                             className="admin-inline-btn delete"
                             onClick={(e) => handleDelete(issue.id, e)}
                             disabled={isDeleting}
-                            style={{
-                              cursor: isDeleting ? "not-allowed" : "pointer",
-                              opacity: isDeleting ? 0.5 : 1
-                            }}
                             title="Delete Issue"
                           >
                             <Trash2 size={16} />
@@ -477,7 +427,7 @@ export default function BuildingDetail() {
           )}
         </div>
 
-        {/* MODAL VIEW */}
+        {/* MODAL */}
         {modalIssue && (
           <UserActiveIssueModal
             issue={modalIssue}
