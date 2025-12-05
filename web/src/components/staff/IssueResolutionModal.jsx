@@ -40,6 +40,7 @@ export default function IssueResolutionModal({
     resolvedByStaffId: "",
     buildingCode: "",
   });
+
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
@@ -47,42 +48,49 @@ export default function IssueResolutionModal({
   const [showPhoto, setShowPhoto] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // ===========================
+  // INITIALIZE DATA
+  // ===========================
   useEffect(() => {
-    if (isOpen) {
-      console.log("📋 Issue object from props (API):", issue);
+    if (!isOpen) return;
 
-      setForm({
-        issueTitle: issue.issueTitle || "",
-        issueDescription: issue.issueDescription || "",
-        issuePriority: issue.issuePriority || "MEDIUM",
-        issueStatus: issue.issueStatus || "ACTIVE",
-        issueLocation: issue.issueLocation || "",
-        exactLocation: issue.exactLocation || "",
-        resolvedByStaffId: issue.resolvedByStaffId || "",
-        buildingCode: issue.buildingCode || "",
-      });
-      setUploadFile(null);
-      setFileError("");
-      setToast(null);
+    console.log("📋 Issue object from props:", issue);
 
-      // Load staff list
-      setStaffLoading(true);
-      getAllStaff()
-        .then((staffArr) => {
-          console.log("👥 Staff List from API:", staffArr);
-          setStaffList(staffArr || []);
-        })
-        .catch((err) => {
-          console.error("❌ Failed to load staff:", err);
-          showToast("error", "Failed to load staff list");
-          setStaffList([]);
-        })
-        .finally(() => {
-          setStaffLoading(false);
-        });
-    }
+    setForm({
+      issueTitle: issue.issueTitle || "",
+      issueDescription: issue.issueDescription || "",
+      issuePriority: issue.issuePriority || "MEDIUM",
+      issueStatus: issue.issueStatus || "ACTIVE",
+      issueLocation: issue.issueLocation || "",
+      exactLocation: issue.exactLocation || "",
+      resolvedByStaffId: issue.resolvedById || "",
+      buildingCode: issue.buildingCode || "",
+    });
+
+    setUploadFile(null);
+    setFileError("");
+    setToast(null);
+
+    // Load staff list
+    setStaffLoading(true);
+
+    getAllStaff()
+      .then((staffArr) => {
+        console.log("👥 Staff List from API:", staffArr);
+        setStaffList(staffArr || []);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load staff:", err);
+        showToast("error", "Failed to load staff list");
+        setStaffList([]);
+      })
+      .finally(() => setStaffLoading(false));
+
   }, [isOpen, issue]);
 
+  // ===========================
+  // UTIL
+  // ===========================
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 2500);
@@ -90,99 +98,89 @@ export default function IssueResolutionModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log(`[Form Change] ${name}: ${value}`);
     setForm((prev) => ({ ...prev, [name]: value }));
-    console.log(`[Form Change] ${name}:`, value);
   };
 
+  // ===========================
+  // VALIDATE FILE
+  // ===========================
   const validateFile = (file) => {
     if (!file) return null;
 
-    console.log("📎 [File Upload] Attempting to upload:", file.name);
-    console.log("📎 [File Upload] File type:", file.type);
-    console.log("📎 [File Upload] File size:", (file.size / 1024 / 1024).toFixed(2), "MB");
+    console.log("📎 File:", file.name, file.type, file.size);
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      const errorMsg = "Only PDF, DOC, or DOCX files are allowed.";
-      setFileError(errorMsg);
-      showToast("error", errorMsg);
-      console.log("❌ [File Upload] Invalid file type:", file.type);
+      showToast("error", "Only PDF, DOC, or DOCX files are allowed");
       return null;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      const errorMsg = "Max file size is 10MB.";
-      setFileError(errorMsg);
-      showToast("error", errorMsg);
-      console.log("❌ [File Upload] File too large:", (file.size / 1024 / 1024).toFixed(2), "MB");
+      showToast("error", "Max file size is 10MB");
       return null;
     }
 
-    console.log("✅ [File Upload] File accepted:", file.name);
     return file;
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    const validFile = validateFile(file);
+    const valid = validateFile(file);
 
-    if (validFile) {
-      setUploadFile(validFile);
+    if (valid) {
+      setUploadFile(valid);
       setFileError("");
-      showToast("success", `File "${validFile.name}" ready to upload`);
+      showToast("success", `File "${valid.name}" ready to upload`);
     } else {
       e.target.value = "";
       setUploadFile(null);
     }
   };
 
+  // ===========================
+  // SUBMIT
+  // ===========================
   const handleSubmit = () => {
-    console.log("🟢 Will call onSave with:", form, uploadFile);
+    console.log("🟢 SUBMITTING ISSUE");
+    console.log("Form:", form);
+    console.log("File:", uploadFile);
 
     if (!form.issueTitle || !form.issuePriority || !form.issueStatus) {
-      showToast("error", "Please fill all required fields (title, priority, status)");
+      showToast("error", "Please fill all required fields");
       return;
     }
 
     if (form.issueStatus === "FIXED" && !form.resolvedByStaffId) {
-      showToast("error", "Select the staff/group who resolved the issue.");
+      showToast("error", "Select the staff/group that fixed the issue");
       return;
     }
 
     if (fileError) {
-      showToast("error", "Please fix file upload errors before submitting.");
+      showToast("error", "Please fix upload errors");
       return;
     }
 
-    if (form.issueStatus === "FIXED" && !uploadFile && !issue.resolutionFileUrl) {
-      const confirmSubmit = window.confirm(
-        "No resolution report uploaded. Are you sure you want to continue?"
-      );
-      if (!confirmSubmit) return;
-    }
-
+    console.log("📤 Calling onSave...");
     onSave(form, uploadFile);
   };
 
   const handleDeleteClick = () => {
-    if (isDeleting) return;
-    onDelete();
+    if (!isDeleting) onDelete();
   };
 
   const handleCloseClick = () => {
-    if (isSaving) {
-      showToast("warning", "Please wait, saving in progress...");
-      return;
-    }
-    onClose();
+    if (!isSaving) onClose();
   };
 
   if (!isOpen) return null;
 
+  // ===========================
+  // RENDER UI
+  // ===========================
   return (
     <>
-      {/* Toast Notification */}
       {toast && (
         <div className={`toast-container toast-${toast.type}`}>
           {toast.message}
@@ -191,34 +189,31 @@ export default function IssueResolutionModal({
 
       <div className="modal-backdrop">
         <div className="modal-box modal-box-wide">
-          <h2 className="modal-title">
-            {isEditing ? "Edit Issue" : "Resolve Issue"}
-          </h2>
+          <h2 className="modal-title">{isEditing ? "Edit Issue" : "Resolve Issue"}</h2>
 
           <div className="modal-two-column">
-            {/* LEFT COLUMN */}
+
+            {/* LEFT SIDE */}
             <div className="modal-column-left">
-              {/* Issue Title */}
               <div className="form-group">
                 <label className="form-label">
                   Issue Title <span className="required">*</span>
                 </label>
+
                 <input
                   name="issueTitle"
                   className="form-input"
                   value={form.issueTitle}
                   onChange={handleChange}
-                  placeholder="Enter issue title"
                   disabled={isSaving}
+                  placeholder="Enter issue title"
                 />
               </div>
 
-              {/* Priority and Status Row */}
+              {/* PRIORITY + STATUS */}
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">
-                    Priority Level <span className="required">*</span>
-                  </label>
+                  <label className="form-label">Priority <span className="required">*</span></label>
                   <select
                     name="issuePriority"
                     className="form-input"
@@ -226,15 +221,14 @@ export default function IssueResolutionModal({
                     onChange={handleChange}
                     disabled={isSaving}
                   >
-                    {PRIORITY_OPTIONS.map(opt => (
-                      <option value={opt.value} key={opt.value}>{opt.label}</option>
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
+
                 <div className="form-group">
-                  <label className="form-label">
-                    Status <span className="required">*</span>
-                  </label>
+                  <label className="form-label">Status <span className="required">*</span></label>
                   <select
                     name="issueStatus"
                     className="form-input"
@@ -242,38 +236,27 @@ export default function IssueResolutionModal({
                     onChange={handleChange}
                     disabled={isSaving}
                   >
-                    {STATUS_OPTIONS.map(opt => (
-                      <option value={opt.value} key={opt.value}>{opt.label}</option>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Building Location */}
-              <div className="form-group">
-                <label className="form-label">Building / Location</label>
-                <input
-                  className="form-input form-input-disabled"
-                  value={form.buildingCode || form.issueLocation}
-                  disabled
-                />
-              </div>
-
-              {/* Description */}
+              {/* DESCRIPTION */}
               <div className="form-group">
                 <label className="form-label">Description</label>
                 <textarea
                   name="issueDescription"
-                  className="form-input form-textarea"
-                  value={form.issueDescription}
-                  onChange={handleChange}
-                  placeholder="Describe the issue..."
+                  className="form-input"
                   rows={3}
+                  value={form.issueDescription}
                   disabled={isSaving}
+                  placeholder="Describe the issue"
+                  onChange={handleChange}
                 />
               </div>
 
-              {/* Exact Location */}
               <div className="form-group">
                 <label className="form-label">Exact Location</label>
                 <input
@@ -281,113 +264,52 @@ export default function IssueResolutionModal({
                   className="form-input"
                   value={form.exactLocation}
                   onChange={handleChange}
-                  placeholder="e.g., 3rd Floor, Room 301"
+                  placeholder="Example: 2nd Floor - Room 204"
                   disabled={isSaving}
                 />
               </div>
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* RIGHT SIDE */}
             <div className="modal-column-right">
-              {/* Issue Photo Section */}
               {issue.issuePhotoUrl && (
                 <div className="issue-photo-section">
-                  <div className="issue-photo-label">📷 ISSUE PHOTO</div>
+                  <div className="issue-photo-label">📸 Issue Photo</div>
                   <img
                     src={issue.issuePhotoUrl}
                     alt="Issue"
                     className="issue-photo-img"
                     onClick={() => setShowPhoto(true)}
                   />
-                  <div className="issue-photo-caption">Click to view full size</div>
                 </div>
               )}
 
-              {/* Resolution Details Section */}
               <div className="resolution-section">
-                <div className="resolution-header">
-                  <div className="resolution-checkmark">✓</div>
-                  <h4 className="resolution-title">Resolution Details</h4>
-                </div>
+                <h4 className="resolution-title">Resolution Details</h4>
 
-                <a
-                  href="https://docs.google.com/document/d/1iE7c7MKJDMSBsEBorRmOHl_R8SpuI04YTF0eq1DQLVw/edit?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="sample-report-link"
-                >
-                  📄 View Sample Report Format
-                </a>
-
-                {/* Existing Resolution File Link */}
-                {issue.resolutionFileUrl && (
-                  <a
-                    href={issue.resolutionFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="existing-report-link"
-                  >
-                    📄 View Existing Resolution Report
-                  </a>
-                )}
-
+                {/* FILE UPLOAD */}
                 <div className="form-group">
                   <label className="form-label">
-                    Who or What Group Fixed This Issue{" "}
-                    {form.issueStatus === "FIXED" && <span className="required">*</span>}
+                    Upload Report {form.issueStatus === "FIXED" && <span className="required">*</span>}
                   </label>
-                  <select
-                    name="resolvedByStaffId"
-                    className="form-input"
-                    value={form.resolvedByStaffId}
-                    onChange={handleChange}
-                    disabled={form.issueStatus !== "FIXED" || isSaving || staffLoading}
-                  >
-                    <option value="">
-                      {staffLoading ? "Loading staff..." : "Select staff/group"}
-                    </option>
-                    {staffList.map((staff) => (
-                      <option key={staff.id} value={staff.userId}>
-                        {staff.fullname} ({staff.staffId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Upload Report (PDF/DOC/DOCX)</label>
                   <input
                     type="file"
-                    className="form-input form-file-input"
+                    className="form-input"
                     onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     disabled={form.issueStatus !== "FIXED" || isSaving}
                   />
-                  {fileError && <div className="file-error">{fileError}</div>}
-                  {uploadFile && (
-                    <div className="file-success">
-                      ✓ {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
-                    </div>
-                  )}
                 </div>
+
+                {fileError && <div className="file-error">{fileError}</div>}
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="modal-actions">
-            <button 
-              className="btn btn-cancel"
-              onClick={handleCloseClick}
-              disabled={isSaving}
-            >
+            <button className="btn btn-cancel" onClick={handleCloseClick} disabled={isSaving}>
               Cancel
             </button>
-            <button 
-              className="btn btn-submit"
-              onClick={handleSubmit}
-              disabled={isSaving}
-            >
+            <button className="btn btn-submit" onClick={handleSubmit} disabled={isSaving}>
               {isSaving && <Loader2 size={16} className="spinner" />}
               {isSaving ? "Saving..." : "Submit"}
             </button>
@@ -395,21 +317,12 @@ export default function IssueResolutionModal({
         </div>
       </div>
 
-      {/* Photo Modal */}
+      {/* PHOTO PREVIEW */}
       {showPhoto && (
         <div className="photo-modal-backdrop" onClick={() => setShowPhoto(false)}>
-          <div className="photo-modal-content" onClick={e => e.stopPropagation()}>
-            <button
-              className="photo-modal-close"
-              onClick={() => setShowPhoto(false)}
-            >
-              ×
-            </button>
-            <img
-              src={issue.issuePhotoUrl}
-              alt="Issue"
-              className="photo-modal-img"
-            />
+          <div className="photo-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="photo-modal-close" onClick={() => setShowPhoto(false)}>×</button>
+            <img src={issue.issuePhotoUrl} alt="Issue" className="photo-modal-img" />
           </div>
         </div>
       )}
