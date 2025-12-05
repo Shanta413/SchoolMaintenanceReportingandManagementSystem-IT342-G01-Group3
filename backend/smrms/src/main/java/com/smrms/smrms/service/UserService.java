@@ -33,6 +33,7 @@ public class UserService {
         Student student = user.getStudent();
 
         return new ProfileResponse(
+                user.getId(),  // 🔥 UUID String
                 user.getFullname(),
                 user.getEmail(),
                 user.getMobileNumber(),
@@ -105,6 +106,7 @@ public class UserService {
 
         // ✅ Return updated profile response
         return new ProfileResponse(
+                user.getId(),  // 🔥 UUID String
                 user.getFullname(),
                 user.getEmail(),
                 user.getMobileNumber(),

@@ -49,6 +49,7 @@ public class UserController {
             }
 
             ProfileResponse response = new ProfileResponse(
+                    user.getId(),  // 🔥 Returns String UUID
                     user.getFullname(),
                     user.getEmail(),
                     user.getMobileNumber(),
