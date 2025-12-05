@@ -32,9 +32,8 @@ export async function createIssue(issueData, photoFile = null, reportFile = null
   if (photoFile) formData.append("photo", photoFile);
   if (reportFile) formData.append("file", reportFile);
 
-  const { data } = await api.post("/issues", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // Don't set Content-Type manually - let axios set it with the boundary
+  const { data } = await api.post("/issues", formData);
 
   return data;
 }
@@ -51,9 +50,8 @@ export async function updateIssue(issueId, updateData, photoFile = null, resolut
   if (photoFile) formData.append("photo", photoFile);
   if (resolutionFile) formData.append("file", resolutionFile);
 
-  const { data } = await api.put(`/issues/${issueId}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // Don't set Content-Type manually - let axios set it with the boundary
+  const { data } = await api.put(`/issues/${issueId}`, formData);
 
   return data;
 }
