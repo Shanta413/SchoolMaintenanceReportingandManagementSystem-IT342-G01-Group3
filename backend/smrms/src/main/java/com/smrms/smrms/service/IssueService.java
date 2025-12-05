@@ -72,7 +72,6 @@ public class IssueService {
                 .build();
 
         issueRepository.save(issue);
-
         return mapToResponse(issue);
     }
 
@@ -122,6 +121,7 @@ public class IssueService {
         System.out.println("IssueID: " + id);
         System.out.println("Received Status: " + req.getIssueStatus());
         System.out.println("Resolver Staff Id: " + req.getResolvedByStaffId());
+        System.out.println("Building Code: " + req.getBuildingCode());
         System.out.println("Report file: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
         System.out.println("===================================");
 
@@ -129,20 +129,23 @@ public class IssueService {
                 .orElseThrow(() -> new RuntimeException("Issue not found: " + id));
 
         // BASIC FIELDS
-        if (req.getIssueTitle() != null)
-            issue.setIssueTitle(req.getIssueTitle());
-        if (req.getIssueDescription() != null)
-            issue.setIssueDescription(req.getIssueDescription());
-        if (req.getIssueLocation() != null)
-            issue.setIssueLocation(req.getIssueLocation());
-        if (req.getExactLocation() != null)
-            issue.setExactLocation(req.getExactLocation());
+        if (req.getIssueTitle() != null) issue.setIssueTitle(req.getIssueTitle());
+        if (req.getIssueDescription() != null) issue.setIssueDescription(req.getIssueDescription());
+        if (req.getIssueLocation() != null) issue.setIssueLocation(req.getIssueLocation());
+        if (req.getExactLocation() != null) issue.setExactLocation(req.getExactLocation());
         if (req.getIssuePriority() != null)
             issue.setIssuePriority(IssuePriority.valueOf(req.getIssuePriority().toUpperCase()));
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // RESOLVER STAFF
+        // BUILDING CHANGE
+        if (req.getBuildingCode() != null && !req.getBuildingCode().isBlank()) {
+            Building newBuilding = buildingRepository.findByBuildingCode(req.getBuildingCode())
+                    .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingCode()));
+            issue.setBuilding(newBuilding);
+        }
+
+        // RESOLVED BY
         if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
 
             User resolver = userRepository.findById(req.getResolvedByStaffId())
@@ -160,7 +163,7 @@ public class IssueService {
             issue.setIssueCompletedAt(null);
         }
 
-        // FILE UPLOAD (DOCUMENT ONLY)
+        // REPORT FILE
         if (reportFile != null && !reportFile.isEmpty()) {
             System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
             String newUrl = storage.upload(reportFile, "document");
@@ -198,18 +201,15 @@ public class IssueService {
                 .buildingName(i.getBuilding().getBuildingName())
                 .issuePhotoUrl(i.getIssuePhotoUrl())
                 .issueReportFile(i.getIssueReportFile())
-
-                // 🔥 MOST IMPORTANT FIELDS
                 .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
-
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
     }
 
     // ==========================
-    // Convert Issue → Full Response
+    // Convert Issue → Full Response DTO
     // ==========================
     private IssueResponse mapToResponse(Issue i) {
         return IssueResponse.builder()
@@ -226,12 +226,8 @@ public class IssueService {
                 .issueCompletedAt(i.getIssueCompletedAt())
                 .buildingId(i.getBuilding().getId())
                 .buildingName(i.getBuilding().getBuildingName())
-
-                // Reporter
-                .reportedById(i.getReportedBy().getId())
-                .reportedByName(i.getReportedBy().getFullname())
-
-                // Resolver
+                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
+                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
