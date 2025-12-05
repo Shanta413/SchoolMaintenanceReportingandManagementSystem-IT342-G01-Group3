@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Loader2, Download } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { getAllStaff } from "../../api/staff";
 import "../../css/IssueResolutionModal.css";
 
@@ -19,84 +19,6 @@ const ALLOWED_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
-
-// Confirmation Modal for Reverting to Active
-function ConfirmRevertModal({ open, onConfirm, onCancel, hasFile, fileUrl }) {
-  if (!open) return null;
-  
-  return (
-    <div className="modal-backdrop" style={{ zIndex: 1500 }}>
-      <div className="modal-box" style={{ minWidth: 340, maxWidth: 450 }}>
-        <div style={{ padding: 20 }}>
-          <h3 style={{ marginBottom: 16, color: "#b91c1c", textAlign: "center", fontSize: "1.25rem" }}>
-            ⚠️ Revert to Active Status?
-          </h3>
-          <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6 }}>
-            Changing the status back to <strong>Active</strong> will permanently remove:
-          </p>
-          <ul style={{ 
-            marginTop: 12, 
-            marginBottom: 16, 
-            paddingLeft: 24, 
-            color: "#64748b",
-            fontSize: "0.9rem" 
-          }}>
-            <li>The assigned resolver</li>
-            <li>The resolution report file</li>
-            <li>The completion timestamp</li>
-          </ul>
-          {hasFile && (
-            <div style={{ 
-              margin: "16px 0", 
-              padding: 12, 
-              background: "#fef2f2",
-              borderRadius: 8,
-              border: "1px solid #fecaca"
-            }}>
-              <p style={{ color: "#dc2626", fontWeight: 600, marginBottom: 8, fontSize: "0.9rem" }}>
-                📥 Download the report before proceeding!
-              </p>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  color: "#2563eb",
-                  textDecoration: "none",
-                  fontSize: "0.9rem",
-                  fontWeight: 500
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
-                onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
-              >
-                <Download size={16} />
-                Download Report Now
-              </a>
-            </div>
-          )}
-        </div>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "flex-end", 
-          gap: 12, 
-          padding: "0 20px 20px",
-          borderTop: "1px solid #e2e8f0",
-          paddingTop: 16
-        }}>
-          <button className="btn btn-cancel" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="btn btn-delete" onClick={onConfirm}>
-            Yes, Revert to Active
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function IssueResolutionModal({
   isOpen,
@@ -118,38 +40,30 @@ export default function IssueResolutionModal({
     resolvedByStaffId: "",
     buildingCode: "",
   });
-  
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [fileError, setFileError] = useState("");
   const [showPhoto, setShowPhoto] = useState(false);
   const [toast, setToast] = useState(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [originalStatus, setOriginalStatus] = useState("ACTIVE");
 
   useEffect(() => {
     if (isOpen) {
       console.log("📋 Issue object from props (API):", issue);
 
-      const initialStatus = issue.issueStatus || "ACTIVE";
-      setOriginalStatus(initialStatus);
-
       setForm({
         issueTitle: issue.issueTitle || "",
         issueDescription: issue.issueDescription || "",
         issuePriority: issue.issuePriority || "MEDIUM",
-        issueStatus: initialStatus,
+        issueStatus: issue.issueStatus || "ACTIVE",
         issueLocation: issue.issueLocation || "",
         exactLocation: issue.exactLocation || "",
-        resolvedByStaffId: issue.resolvedById || "",
+        resolvedByStaffId: issue.resolvedByStaffId || "",
         buildingCode: issue.buildingCode || "",
       });
-      
       setUploadFile(null);
       setFileError("");
       setToast(null);
-      setShowConfirmModal(false);
 
       // Load staff list
       setStaffLoading(true);
@@ -171,40 +85,13 @@ export default function IssueResolutionModal({
 
   const showToast = (type, message) => {
     setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 2500);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Special handling for status change from FIXED to ACTIVE
-    if (name === "issueStatus") {
-      if (originalStatus === "FIXED" && value === "ACTIVE") {
-        setShowConfirmModal(true);
-        return;
-      }
-    }
-    
     setForm((prev) => ({ ...prev, [name]: value }));
     console.log(`[Form Change] ${name}:`, value);
-  };
-
-  const handleConfirmRevert = () => {
-    setForm((prev) => ({
-      ...prev,
-      issueStatus: "ACTIVE",
-      resolvedByStaffId: "",
-    }));
-    setUploadFile(null);
-    setShowConfirmModal(false);
-    setOriginalStatus("ACTIVE");
-    showToast("warning", "Status reverted to Active. Resolver and file will be removed on save.");
-  };
-
-  const handleCancelRevert = () => {
-    setShowConfirmModal(false);
-    // Reset status back to original
-    setForm((prev) => ({ ...prev, issueStatus: originalStatus }));
   };
 
   const validateFile = (file) => {
@@ -278,23 +165,17 @@ export default function IssueResolutionModal({
     onSave(form, uploadFile);
   };
 
+  const handleDeleteClick = () => {
+    if (isDeleting) return;
+    onDelete();
+  };
+
   const handleCloseClick = () => {
     if (isSaving) {
       showToast("warning", "Please wait, saving in progress...");
       return;
     }
     onClose();
-  };
-
-  const getFileNameFromUrl = (url) => {
-    if (!url) return "Report";
-    try {
-      const urlPath = url.split("?")[0];
-      const filename = urlPath.substring(urlPath.lastIndexOf("/") + 1);
-      return decodeURIComponent(filename) || "Report";
-    } catch {
-      return "Report";
-    }
   };
 
   if (!isOpen) return null;
@@ -306,17 +187,6 @@ export default function IssueResolutionModal({
         <div className={`toast-container toast-${toast.type}`}>
           {toast.message}
         </div>
-      )}
-
-      {/* Confirm Revert Modal */}
-      {showConfirmModal && (
-        <ConfirmRevertModal
-          open={showConfirmModal}
-          onConfirm={handleConfirmRevert}
-          onCancel={handleCancelRevert}
-          hasFile={!!issue.resolutionFileUrl}
-          fileUrl={issue.resolutionFileUrl}
-        />
       )}
 
       <div className="modal-backdrop">
@@ -422,7 +292,7 @@ export default function IssueResolutionModal({
               {/* Issue Photo Section */}
               {issue.issuePhotoUrl && (
                 <div className="issue-photo-section">
-                  <div className="issue-photo-label">📷 Issue Photo</div>
+                  <div className="issue-photo-label">📷 ISSUE PHOTO</div>
                   <img
                     src={issue.issuePhotoUrl}
                     alt="Issue"
@@ -440,10 +310,30 @@ export default function IssueResolutionModal({
                   <h4 className="resolution-title">Resolution Details</h4>
                 </div>
 
-                {/* Resolved By Dropdown - THIS WAS MISSING */}
+                <a
+                  href="https://docs.google.com/document/d/1iE7c7MKJDMSBsEBorRmOHl_R8SpuI04YTF0eq1DQLVw/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="sample-report-link"
+                >
+                  📄 View Sample Report Format
+                </a>
+
+                {/* Existing Resolution File Link */}
+                {issue.resolutionFileUrl && (
+                  <a
+                    href={issue.resolutionFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="existing-report-link"
+                  >
+                    📄 View Existing Resolution Report
+                  </a>
+                )}
+
                 <div className="form-group">
                   <label className="form-label">
-                    Resolved By{" "}
+                    Who or What Group Fixed This Issue{" "}
                     {form.issueStatus === "FIXED" && <span className="required">*</span>}
                   </label>
                   <select
@@ -464,12 +354,8 @@ export default function IssueResolutionModal({
                   </select>
                 </div>
 
-                {/* File Upload */}
                 <div className="form-group">
-                  <label className="form-label">
-                    Upload Report{" "}
-                    {form.issueStatus === "FIXED" && <span className="required">*</span>}
-                  </label>
+                  <label className="form-label">Upload Report (PDF/DOC/DOCX)</label>
                   <input
                     type="file"
                     className="form-input form-file-input"
@@ -484,28 +370,6 @@ export default function IssueResolutionModal({
                     </div>
                   )}
                 </div>
-
-                {/* Existing Resolution File Link */}
-                {issue.resolutionFileUrl && (
-                  <a
-                    href={issue.resolutionFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="existing-report-link"
-                  >
-                    <Download size={16} />
-                    View Current Report
-                  </a>
-                )}
-
-                <a
-                  href="https://docs.google.com/document/d/1iE7c7MKJDMSBsEBorRmOHl_R8SpuI04YTF0eq1DQLVw/edit?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="sample-report-link"
-                >
-                  📄 View Sample Report Format
-                </a>
               </div>
             </div>
           </div>

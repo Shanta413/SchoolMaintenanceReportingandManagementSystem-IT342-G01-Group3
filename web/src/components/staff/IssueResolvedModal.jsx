@@ -20,42 +20,21 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-// Confirmation Modal for Reverting to Active
-function ConfirmRevertModal({ open, onConfirm, onCancel, hasFile, fileUrl, fileName }) {
+// Confirm Revert Modal
+function ConfirmRevertModal({ open, onConfirm, onCancel, hasFile, fileUrl }) {
   if (!open) return null;
-  
   return (
     <div className="modal-backdrop" style={{ zIndex: 1500 }}>
-      <div className="modal-box" style={{ minWidth: 340, maxWidth: 450 }}>
-        <div style={{ padding: 20 }}>
-          <h3 style={{ marginBottom: 16, color: "#b91c1c", textAlign: "center", fontSize: "1.25rem" }}>
-            ⚠️ Revert to Active Status?
-          </h3>
-          <p style={{ color: "#475569", fontSize: "0.95rem", lineHeight: 1.6 }}>
-            Changing the status back to <strong>Active</strong> will permanently remove:
+      <div className="modal-box" style={{ minWidth: 340, maxWidth: 400 }}>
+        <div style={{ textAlign: "center", padding: 20 }}>
+          <h3 style={{ marginBottom: 10, color: "#b91c1c" }}>Revert to Active?</h3>
+          <p style={{ color: "#475569", fontSize: 15 }}>
+            Changing status to <b>Active</b> will <b>remove the resolver and attached report file</b>.
           </p>
-          <ul style={{ 
-            marginTop: 12, 
-            marginBottom: 16, 
-            paddingLeft: 24, 
-            color: "#64748b",
-            fontSize: "0.9rem" 
-          }}>
-            <li>The assigned resolver</li>
-            <li>The resolution report file</li>
-            <li>The completion timestamp</li>
-          </ul>
           {hasFile && (
-            <div style={{ 
-              margin: "16px 0", 
-              padding: 12, 
-              background: "#fef2f2",
-              borderRadius: 8,
-              border: "1px solid #fecaca"
-            }}>
-              <p style={{ color: "#dc2626", fontWeight: 600, marginBottom: 8, fontSize: "0.9rem" }}>
-                📥 Download the report before proceeding!
-              </p>
+            <div style={{ margin: "10px 0", color: "#dc2626", fontWeight: 500 }}>
+              Download the file before proceeding!
+              <br />
               <a
                 href={fileUrl}
                 target="_blank"
@@ -63,34 +42,24 @@ function ConfirmRevertModal({ open, onConfirm, onCancel, hasFile, fileUrl, fileN
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  marginTop: 4,
                   color: "#2563eb",
-                  textDecoration: "none",
-                  fontSize: "0.9rem",
-                  fontWeight: 500
+                  textDecoration: "underline",
+                  fontSize: "1rem"
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
-                onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
               >
-                <Download size={16} />
-                {fileName || "Download Report"}
+                <Download size={16} style={{ marginRight: 6 }} />
+                Download Report
               </a>
             </div>
           )}
         </div>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "flex-end", 
-          gap: 12, 
-          padding: "0 20px 20px",
-          borderTop: "1px solid #e2e8f0",
-          paddingTop: 16
-        }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20 }}>
           <button className="btn btn-cancel" onClick={onCancel}>
             Cancel
           </button>
           <button className="btn btn-delete" onClick={onConfirm}>
-            Yes, Revert to Active
+            Yes, Revert
           </button>
         </div>
       </div>
@@ -116,9 +85,9 @@ export default function IssueResolvedModal({
     issueLocation: "",
     exactLocation: "",
     resolvedByStaffId: "",
+    issueReportFile: null,
     buildingCode: "",
   });
-  
   const [staffList, setStaffList] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
@@ -126,7 +95,7 @@ export default function IssueResolvedModal({
   const [toast, setToast] = useState(null);
   const [showPhoto, setShowPhoto] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [statusChangedToActive, setStatusChangedToActive] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -140,12 +109,12 @@ export default function IssueResolvedModal({
         issueLocation: issue.issueLocation || "",
         exactLocation: issue.exactLocation || "",
         resolvedByStaffId: issue.resolvedById || "",
+        issueReportFile: issue.issueReportFile || null,
         buildingCode: issue.buildingCode || "",
       });
-      
       setUploadFile(null);
       setFileError("");
-      setIsEditMode(false);
+      setStatusChangedToActive(false);
       setShowConfirmModal(false);
       setToast(null);
 
@@ -169,38 +138,28 @@ export default function IssueResolvedModal({
 
   const showToast = (type, message) => {
     setToast({ type, message });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 2500);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Special handling for status change from FIXED to ACTIVE
     if (name === "issueStatus") {
       if (form.issueStatus === "FIXED" && value === "ACTIVE") {
         setShowConfirmModal(true);
         return;
       }
+      setForm((prev) => ({ ...prev, [name]: value }));
+      if (value === "ACTIVE") {
+        setStatusChangedToActive(true);
+      } else {
+        setStatusChangedToActive(false);
+      }
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
     }
     
-    setForm((prev) => ({ ...prev, [name]: value }));
     console.log(`[Form Change] ${name}:`, value);
-  };
-
-  const handleConfirmRevert = () => {
-    setForm((prev) => ({
-      ...prev,
-      issueStatus: "ACTIVE",
-      resolvedByStaffId: "",
-    }));
-    setUploadFile(null);
-    setIsEditMode(true);
-    setShowConfirmModal(false);
-    showToast("warning", "Status reverted to Active. Resolver and file will be removed on save.");
-  };
-
-  const handleCancelRevert = () => {
-    setShowConfirmModal(false);
   };
 
   const validateFile = (file) => {
@@ -246,6 +205,25 @@ export default function IssueResolvedModal({
     }
   };
 
+  const handleConfirmRevert = () => {
+    setForm((prev) => ({
+      ...prev,
+      issueStatus: "ACTIVE",
+      resolvedByStaffId: "",
+      issueReportFile: null,
+    }));
+    setUploadFile(null);
+    setShowConfirmModal(false);
+    setStatusChangedToActive(true);
+    showToast("warning", "Status reverted to Active. Resolver and file removed.");
+  };
+
+  const handleCancelRevert = () => {
+    setShowConfirmModal(false);
+  };
+
+  const isEditable = statusChangedToActive || form.issueStatus === "ACTIVE";
+
   const handleSubmit = () => {
     console.log("🟢 Will call onSave with:", form, uploadFile);
 
@@ -254,7 +232,7 @@ export default function IssueResolvedModal({
       return;
     }
 
-    if (form.issueStatus === "FIXED" && !form.resolvedByStaffId && !issue.resolvedById) {
+    if (form.issueStatus === "FIXED" && !form.resolvedByStaffId) {
       showToast("error", "Select the staff/group who resolved the issue.");
       return;
     }
@@ -275,6 +253,26 @@ export default function IssueResolvedModal({
     onClose();
   };
 
+  if (!isOpen) return null;
+
+  if (showConfirmModal) {
+    return (
+      <ConfirmRevertModal
+        open={showConfirmModal}
+        onConfirm={handleConfirmRevert}
+        onCancel={handleCancelRevert}
+        hasFile={!!form.issueReportFile}
+        fileUrl={form.issueReportFile}
+      />
+    );
+  }
+
+  const isDownloadableFile = (url) => {
+    if (!url) return false;
+    return /\.(pdf|doc|docx)$/i.test(url.split("?")[0]);
+  };
+
+  // Extract filename from URL (fallback if backend doesn't provide filename)
   const getFileNameFromUrl = (url) => {
     if (!url) return "Report";
     try {
@@ -286,10 +284,6 @@ export default function IssueResolvedModal({
     }
   };
 
-  if (!isOpen) return null;
-
-  const fieldsAreEditable = isEditMode || form.issueStatus === "ACTIVE";
-
   return (
     <>
       {/* Toast Notification */}
@@ -297,18 +291,6 @@ export default function IssueResolvedModal({
         <div className={`toast-container toast-${toast.type}`}>
           {toast.message}
         </div>
-      )}
-
-      {/* Confirm Revert Modal */}
-      {showConfirmModal && (
-        <ConfirmRevertModal
-          open={showConfirmModal}
-          onConfirm={handleConfirmRevert}
-          onCancel={handleCancelRevert}
-          hasFile={!!issue.resolutionFileUrl}
-          fileUrl={issue.resolutionFileUrl}
-          fileName={getFileNameFromUrl(issue.resolutionFileUrl)}
-        />
       )}
 
       <div className="modal-backdrop">
@@ -326,8 +308,8 @@ export default function IssueResolvedModal({
                   className="form-input"
                   value={form.issueTitle}
                   onChange={handleChange}
-                  disabled={!fieldsAreEditable || isSaving}
-                  style={!fieldsAreEditable ? {
+                  disabled={!isEditable || isSaving}
+                  style={!isEditable ? {
                     backgroundColor: "#f3f4f6",
                     cursor: "not-allowed",
                     color: "#6b7280"
@@ -344,8 +326,8 @@ export default function IssueResolvedModal({
                     className="form-input"
                     value={form.issuePriority}
                     onChange={handleChange}
-                    disabled={!fieldsAreEditable || isSaving}
-                    style={!fieldsAreEditable ? {
+                    disabled={!isEditable || isSaving}
+                    style={!isEditable ? {
                       backgroundColor: "#f3f4f6",
                       cursor: "not-allowed",
                       color: "#6b7280"
@@ -391,8 +373,8 @@ export default function IssueResolvedModal({
                   value={form.issueDescription}
                   onChange={handleChange}
                   rows={3}
-                  disabled={!fieldsAreEditable || isSaving}
-                  style={!fieldsAreEditable ? {
+                  disabled={!isEditable || isSaving}
+                  style={!isEditable ? {
                     backgroundColor: "#f3f4f6",
                     cursor: "not-allowed",
                     color: "#6b7280"
@@ -409,8 +391,8 @@ export default function IssueResolvedModal({
                   value={form.exactLocation}
                   onChange={handleChange}
                   placeholder="e.g., 3rd Floor, Room 301"
-                  disabled={!fieldsAreEditable || isSaving}
-                  style={!fieldsAreEditable ? {
+                  disabled={!isEditable || isSaving}
+                  style={!isEditable ? {
                     backgroundColor: "#f3f4f6",
                     cursor: "not-allowed",
                     color: "#6b7280"
@@ -442,8 +424,8 @@ export default function IssueResolvedModal({
                   <h4 className="resolution-title">Resolution Details</h4>
                 </div>
 
-                {/* Show resolved by info (read-only when not in edit mode) */}
-                {!fieldsAreEditable && issue.resolvedByName && (
+                {/* Show resolved by info (read-only display) */}
+                {!isEditable && issue.resolvedByName && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ 
                       fontSize: "0.85rem", 
@@ -466,8 +448,8 @@ export default function IssueResolvedModal({
                   </div>
                 )}
 
-                {/* Current Resolution File (read-only when not in edit mode) */}
-                {!fieldsAreEditable && issue.resolutionFileUrl && (
+                {/* Current Resolution File */}
+                {!isEditable && (issue.resolutionFileUrl || form.issueReportFile) && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ 
                       fontSize: "0.85rem", 
@@ -478,7 +460,7 @@ export default function IssueResolvedModal({
                       Resolution Report:
                     </div>
                     <a
-                      href={issue.resolutionFileUrl}
+                      href={issue.resolutionFileUrl || form.issueReportFile}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
@@ -503,25 +485,24 @@ export default function IssueResolvedModal({
                       }}
                     >
                       <Download size={16} />
-                      {getFileNameFromUrl(issue.resolutionFileUrl)}
+                      {issue.resolutionFileName || getFileNameFromUrl(issue.resolutionFileUrl || form.issueReportFile)}
                     </a>
                   </div>
                 )}
 
-                {/* Show editable fields when status is changed to ACTIVE or in edit mode */}
-                {fieldsAreEditable && (
+                {/* Only show editable fields when status is changed to ACTIVE */}
+                {isEditable && (
                   <>
                     <div className="form-group">
                       <label className="form-label">
                         Who or What Group Fixed This Issue
-                        {form.issueStatus === "FIXED" && <span className="required"> *</span>}
                       </label>
                       <select
                         name="resolvedByStaffId"
                         className="form-input"
                         value={form.resolvedByStaffId}
                         onChange={handleChange}
-                        disabled={isSaving || staffLoading || form.issueStatus !== "FIXED"}
+                        disabled={isSaving || staffLoading}
                       >
                         <option value="">
                           {staffLoading ? "Loading staff..." : "Select staff/group"}
@@ -541,7 +522,7 @@ export default function IssueResolvedModal({
                         className="form-input form-file-input"
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        disabled={isSaving || form.issueStatus !== "FIXED"}
+                        disabled={isSaving}
                       />
                       {fileError && <div className="file-error">{fileError}</div>}
                       {uploadFile && (
