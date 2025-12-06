@@ -154,12 +154,15 @@ public class IssueService {
             System.out.println("[UPDATE] Uploaded PHOTO URL: " + newPhotoUrl);
         }
 
-        // ============ FIXED LOGIC ============
+        // ============ STATUS LOGIC ============
         if ("ACTIVE".equalsIgnoreCase(req.getIssueStatus())) {
             System.out.println("[UPDATE] Status changed to ACTIVE - clearing resolver and report file");
             issue.setResolvedBy(null);
             issue.setIssueCompletedAt(null);
+            // Clear the report file when status is changed back to ACTIVE
+            String currentReportFile = issue.getIssueReportFile();
             issue.setIssueReportFile(null);
+            System.out.println("[UPDATE] Cleared report file: " + currentReportFile);
         } else if ("FIXED".equalsIgnoreCase(req.getIssueStatus())) {
             if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
                 User resolver = userRepository.findById(req.getResolvedByStaffId())
@@ -203,8 +206,7 @@ public class IssueService {
                 .issuePriority(i.getIssuePriority() != null ? i.getIssuePriority().name() : null)
                 .issueStatus(i.getIssueStatus() != null ? i.getIssueStatus().name() : null)
                 .issueCreatedAt(i.getIssueCreatedAt())
-                .issueCompletedAt(i.getIssueCompletedAt())
-                .buildingCode(i.getBuilding() != null ? i.getBuilding().getBuildingCode() : null)
+                .buildingId(i.getBuilding() != null ? i.getBuilding().getId() : null)
                 .buildingName(i.getBuilding() != null ? i.getBuilding().getBuildingName() : null)
                 .issuePhotoUrl(i.getIssuePhotoUrl())
                 .issueReportFile(i.getIssueReportFile())
@@ -216,27 +218,27 @@ public class IssueService {
     }
 
     // ==========================
-// Convert Issue → Summary DTO
-// ==========================
-private IssueSummaryDTO mapToSummary(Issue i) {
-    return IssueSummaryDTO.builder()
-            .id(i.getId())
-            .issueTitle(i.getIssueTitle())
-            .issueDescription(i.getIssueDescription())
-            .issueLocation(i.getIssueLocation())
-            .exactLocation(i.getExactLocation())
-            .issuePriority(i.getIssuePriority() != null ? i.getIssuePriority().name() : null)
-            .issueStatus(i.getIssueStatus() != null ? i.getIssueStatus().name() : null)
-            .issueCreatedAt(i.getIssueCreatedAt())
-            // .issueCompletedAt(i.getIssueCompletedAt())  ← REMOVED - field doesn't exist in DTO
-            .buildingId(i.getBuilding() != null ? i.getBuilding().getId() : null)  // ← Changed to buildingId
-            .buildingName(i.getBuilding() != null ? i.getBuilding().getBuildingName() : null)
-            .issuePhotoUrl(i.getIssuePhotoUrl())
-            .issueReportFile(i.getIssueReportFile())
-            .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
-            .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
-            .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
-            .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
-            .build();
-}
+    // Convert Issue → Full Response
+    // ==========================
+    private IssueResponse mapToResponse(Issue i) {
+        return IssueResponse.builder()
+                .id(i.getId())
+                .issueTitle(i.getIssueTitle())
+                .issueDescription(i.getIssueDescription())
+                .issueLocation(i.getIssueLocation())
+                .exactLocation(i.getExactLocation())
+                .issuePriority(i.getIssuePriority() != null ? i.getIssuePriority().name() : null)
+                .issueStatus(i.getIssueStatus() != null ? i.getIssueStatus().name() : null)
+                .issuePhotoUrl(i.getIssuePhotoUrl())
+                .issueReportFile(i.getIssueReportFile())
+                .issueCreatedAt(i.getIssueCreatedAt())
+                .issueCompletedAt(i.getIssueCompletedAt())
+                .buildingId(i.getBuilding() != null ? i.getBuilding().getId() : null)
+                .buildingName(i.getBuilding() != null ? i.getBuilding().getBuildingName() : null)
+                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
+                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
+                .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
+                .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
+                .build();
+    }
 }
