@@ -15,7 +15,6 @@ export default function ReportIssue() {
   // Detect Edit mode
   const isEdit = location.state?.edit === true;
   const issueData = location.state || null;
-
   const buildingFromState = location.state?.buildingCode || "";
 
   // Form fields
@@ -98,19 +97,21 @@ export default function ReportIssue() {
       setSubmitting(true);
 
       if (isEdit) {
-        // UPDATE MODE
-        await updateIssue(issueData.id, {
-          issueTitle: title,
-          issueDescription: description,
-          issuePriority: priority,
-          issueLocation: buildingCode,
-          exactLocation: locationText,
-          buildingId: selectedBuilding.id,
-        }, photo);
+        await updateIssue(
+          issueData.id,
+          {
+            issueTitle: title,
+            issueDescription: description,
+            issuePriority: priority,
+            issueLocation: buildingCode,
+            exactLocation: locationText,
+            buildingCode: buildingCode,
+          },
+          photo
+        );
 
         showToast("success", "Issue updated successfully!");
       } else {
-        // CREATE MODE
         await createIssue(
           {
             issueTitle: title,
@@ -122,11 +123,13 @@ export default function ReportIssue() {
           },
           photo
         );
+
         showToast("success", "Issue reported successfully!");
       }
 
       setTimeout(() => navigate(`/buildings/${buildingCode}`), 1100);
     } catch (err) {
+      console.error("Submit error:", err);
       showToast("error", "Failed to submit. Try again.");
     } finally {
       setSubmitting(false);
@@ -146,13 +149,14 @@ export default function ReportIssue() {
             <div className="report-header">
               <h2>{isEdit ? "Edit Issue" : "Report New Issue"}</h2>
               <p className="report-subtitle">
-                {isEdit ? "Update the details of this issue" : "Fill out the form below to submit a maintenance issue"}
+                {isEdit
+                  ? "Update the details of this issue"
+                  : "Fill out the form below to submit a maintenance issue"}
               </p>
             </div>
 
             {/* Form */}
             <form className="report-form-container" onSubmit={handleSubmit}>
-
               {/* Title */}
               <div className="form-group">
                 <label className="form-label">
@@ -236,7 +240,9 @@ export default function ReportIssue() {
               <div className="form-group">
                 <label className="form-label">Add Image (Optional)</label>
                 <div
-                  className={`file-upload-area ${dragActive ? "drag-active" : ""} ${photo ? "has-file" : ""}`}
+                  className={`file-upload-area ${
+                    dragActive ? "drag-active" : ""
+                  } ${photo ? "has-file" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
@@ -245,7 +251,9 @@ export default function ReportIssue() {
                 >
                   {!photo ? (
                     <>
-                      <div className="file-upload-icon"><Upload size={24} /></div>
+                      <div className="file-upload-icon">
+                        <Upload size={24} />
+                      </div>
                       <div className="file-upload-text">
                         <span className="highlight">Click to upload</span> or drag and drop
                       </div>
@@ -255,7 +263,14 @@ export default function ReportIssue() {
                     <div className="selected-file">
                       <CheckCircle size={20} className="selected-file-icon" />
                       <span>{photo.name}</span>
-                      <button type="button" className="remove-file-btn" onClick={() => setPhoto(null)}>
+                      <button
+                        type="button"
+                        className="remove-file-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPhoto(null);
+                        }}
+                      >
                         ×
                       </button>
                     </div>
@@ -279,18 +294,13 @@ export default function ReportIssue() {
                   {submitting ? "Saving..." : isEdit ? "Update Issue" : "Submit Issue"}
                 </button>
               </div>
-
             </form>
           </div>
         </div>
       </div>
 
       {/* Toast */}
-      {toast.message && (
-        <div className={`toast toast-${toast.type}`}>
-          {toast.message}
-        </div>
-      )}
+      {toast.message && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
     </div>
   );
 }

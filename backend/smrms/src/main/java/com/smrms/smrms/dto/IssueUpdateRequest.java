@@ -14,6 +14,7 @@ public class IssueUpdateRequest {
     private String issueLocation;
     private String exactLocation;
     private String resolvedByStaffId;
+    private String buildingCode;     // ✅ ADDED THIS FIELD
     // REMOVED: resolutionNotes
     // Add more fields if your frontend expects them!
 }
