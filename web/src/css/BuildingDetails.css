@@ -177,7 +177,7 @@
   font-weight: 600;
 }
 
-.tab-badge.active {
+.tab-button.active .tab-badge {
   background: #dbeafe;
   color: #2563eb;
 }
@@ -332,7 +332,7 @@
   background: white;
   border-left: 4px solid;
   border-radius: 8px;
-  padding: 20px 24px;
+  padding: 0;
   margin-bottom: 16px;
   cursor: pointer;
   transition: all 0.2s;
@@ -348,7 +348,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 24px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .issue-main {
@@ -390,8 +391,14 @@
 .issue-meta {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 8px;
   flex-wrap: wrap;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.issue-meta > span:first-of-type {
+  margin-right: 0;
 }
 
 .category-tag {
@@ -409,6 +416,15 @@
   color: #64748b;
 }
 
+/* Right side container */
+.issue-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .issue-date {
   display: flex;
   align-items: center;
@@ -419,7 +435,7 @@
 }
 
 /* Admin Inline Action Buttons (Icons) */
-.admin-inline-actions {
+.issue-actions {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -459,6 +475,11 @@
   border-color: #dc2626;
   transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+}
+
+.admin-inline-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Responsive */
@@ -507,16 +528,21 @@
     padding: 6px 12px;
   }
 
-  .issue-card {
-    padding: 16px;
+  .issue-card-content {
+    padding: 12px;
   }
 
-  .issue-card-content {
-    flex-direction: column;
+  .issue-right {
+    align-items: flex-end;
   }
 
   .issue-date {
-    align-self: flex-start;
+    font-size: 12px;
+  }
+
+  .admin-inline-btn {
+    width: 28px;
+    height: 28px;
   }
 }
 
@@ -539,5 +565,18 @@
 
   .issue-meta {
     gap: 12px;
+  }
+
+  .issue-card-content {
+    gap: 12px;
+  }
+
+  .issue-actions {
+    gap: 6px;
+  }
+
+  .admin-inline-btn {
+    width: 26px;
+    height: 26px;
   }
 }

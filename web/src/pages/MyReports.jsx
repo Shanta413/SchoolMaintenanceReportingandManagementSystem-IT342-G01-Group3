@@ -1,8 +1,10 @@
 // src/pages/MyReports.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { User, Calendar, Edit2, Trash2, Search } from "lucide-react";
 
 import Header from "../components/Header";
+import UserActiveIssueModal from "../components/UserActiveIssueModal";
 import { getAllIssues, deleteIssue } from "../api/issues";
 
 import "../css/MyReports.css";
@@ -20,6 +22,14 @@ export default function MyReports() {
 
   const [allIssues, setAllIssues] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalIssue, setModalIssue] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // ---------------------------------------
   // REFRESHABLE FETCH FUNCTION
@@ -64,7 +74,6 @@ export default function MyReports() {
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
   // Stats
-  const totalReports = allIssues.length;
   const activeIssuesCount = allIssues.filter(
     (i) => !isResolvedStatus(i.issueStatus)
   ).length;
@@ -140,41 +149,37 @@ export default function MyReports() {
     sortBy,
   ]);
 
-  const handleEdit = (issue) => {
-    navigate("/buildings/ReportIssue", {
-      state: {
-        ...issue,
-        edit: true,
-        buildingCode: issue.buildingCode,
-      },
-    });
-  };
+  const handleDelete = async (issueId, e) => {
+    e.stopPropagation();
 
-  const handleDelete = async (issueId) => {
     if (!window.confirm("Are you sure you want to delete this report?")) return;
+
+    setIsDeleting(true);
 
     try {
       await deleteIssue(issueId);
       setAllIssues((prev) => prev.filter((i) => i.id !== issueId));
-      alert("Report deleted successfully!");
+      showToast("success", "Report deleted successfully!");
     } catch (error) {
       console.error("Delete failed:", error);
-      alert(
-        error?.response?.data?.message || "Failed to delete. Please try again."
-      );
+      const errorMsg =
+        error?.response?.data?.message || "Failed to delete. Please try again.";
+      showToast("error", errorMsg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const getPriorityClass = (priority) => {
+  const getPriorityColor = (priority) => {
     switch ((priority || "").toUpperCase()) {
       case "HIGH":
-        return "priority-high";
+        return { bg: "#fef2f2", border: "#ef4444", text: "#dc2626" };
       case "MEDIUM":
-        return "priority-medium";
+        return { bg: "#fff7ed", border: "#f97316", text: "#ea580c" };
       case "LOW":
-        return "priority-low";
+        return { bg: "#f0fdf4", border: "#22c55e", text: "#16a34a" };
       default:
-        return "";
+        return { bg: "#f3f4f6", border: "#9ca3af", text: "#6b7280" };
     }
   };
 
@@ -189,6 +194,37 @@ export default function MyReports() {
 
   return (
     <div className="my-reports-page">
+      {/* Toast */}
+      {toast && (
+        <div
+          className="toast-container"
+          style={{
+            position: "fixed",
+            top: 20,
+            right: 20,
+            zIndex: 9999,
+          }}
+        >
+          <div
+            className={`toast toast-${toast.type}`}
+            style={{
+              padding: "12px 20px",
+              borderRadius: 8,
+              background:
+                toast.type === "success"
+                  ? "#10b981"
+                  : toast.type === "error"
+                  ? "#ef4444"
+                  : "#3b82f6",
+              color: "#fff",
+              fontWeight: 500,
+            }}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <Header userName={user.username || "Student"} />
 
       <main className="reports-main">
@@ -228,20 +264,20 @@ export default function MyReports() {
               onClick={() => setActiveTab("active")}
               className={`tab-btn ${activeTab === "active" ? "active" : ""}`}
             >
-              Active Issues ({activeIssuesCount})
+              Active Issues <span className="tab-badge">{activeIssuesCount}</span>
             </button>
             <button
               onClick={() => setActiveTab("fixed")}
               className={`tab-btn ${activeTab === "fixed" ? "active" : ""}`}
             >
-              Fixed Issues ({fixedIssuesCount})
+              Fixed Issues <span className="tab-badge">{fixedIssuesCount}</span>
             </button>
           </div>
 
           {/* Filters */}
           <div className="filters-section">
             <div className="filter-group">
-              <label>All Buildings</label>
+              <label>Building</label>
               <select
                 value={selectedBuilding}
                 onChange={(e) => setSelectedBuilding(e.target.value)}
@@ -272,6 +308,8 @@ export default function MyReports() {
 
           {/* Priority chips */}
           <div className="priority-chips">
+            <span className="filter-label">Filter by Priority:</span>
+
             <button
               onClick={() => setSelectedPriority("all")}
               className={`chip ${selectedPriority === "all" ? "active" : ""}`}
@@ -314,29 +352,87 @@ export default function MyReports() {
                 <p>No reports found</p>
               </div>
             ) : (
-              filteredIssues.map((issue) => (
-                <div key={issue.id} className="report-card">
-                  <div className="report-header">
-                    <h3 className="report-title">{issue.issueTitle}</h3>
+              filteredIssues.map((issue) => {
+                const colors = getPriorityColor(issue.issuePriority);
 
-                    <div className="report-badges">
-                      <span
-                        className={`priority-badge ${getPriorityClass(
-                          issue.issuePriority
-                        )}`}
-                      >
-                        {issue.issuePriority}
-                      </span>
+                return (
+                  <div
+                    key={issue.id}
+                    className="issue-card"
+                    style={{ borderLeftColor: colors.border }}
+                    onClick={() => setModalIssue(issue)}
+                  >
+                    <div
+                      className="issue-card-content"
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: "16px",
+                        padding: "16px",
+                      }}
+                    >
+                      <div className="issue-main">
+                        <div className="issue-header">
+                          <h3 className="issue-title">{issue.issueTitle}</h3>
+                          <span
+                            className="priority-badge"
+                            style={{
+                              background: colors.bg,
+                              color: colors.text,
+                            }}
+                          >
+                            {issue.issuePriority}
+                          </span>
+                        </div>
 
-                      <span
-                        className={`status-badge ${
-                          isResolvedStatus(issue.issueStatus)
-                            ? "status-resolved"
-                            : "status-active"
-                        }`}
-                      >
-                        {issue.issueStatus}
-                      </span>
+                        <div className="issue-meta">
+                          <User size={16} />
+                          <span>Building:</span>
+                          <span style={{ fontWeight: 600 }}>
+                            {issue.buildingName || "Unknown"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right side */}
+                      <div className="issue-right">
+                        <div className="issue-date">
+                          <Calendar size={14} />
+                          {issue.issueCreatedAt &&
+                            new Date(issue.issueCreatedAt).toLocaleDateString()}
+                        </div>
+
+                        {!isResolvedStatus(issue.issueStatus) && (
+                          <div className="issue-actions">
+                            <button
+                              className="admin-inline-btn edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate("/buildings/ReportIssue", {
+                                  state: {
+                                    ...issue,
+                                    edit: true,
+                                    buildingCode: issue.buildingCode,
+                                  },
+                                });
+                              }}
+                              title="Edit Issue"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+
+                            <button
+                              className="admin-inline-btn delete"
+                              onClick={(e) => handleDelete(issue.id, e)}
+                              disabled={isDeleting}
+                              title="Delete Issue"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -376,6 +472,25 @@ export default function MyReports() {
               ))
             )}
           </div>
+
+          {/* MODAL */}
+          {modalIssue && (
+            <UserActiveIssueModal
+              issue={modalIssue}
+              currentUserId={user.id}
+              onClose={() => setModalIssue(null)}
+              onEdit={() => {
+                setModalIssue(null);
+                navigate("/buildings/ReportIssue", {
+                  state: {
+                    ...modalIssue,
+                    edit: true,
+                    buildingCode: modalIssue.buildingCode,
+                  },
+                });
+              }}
+            />
+          )}
         </div>
       </main>
     </div>
