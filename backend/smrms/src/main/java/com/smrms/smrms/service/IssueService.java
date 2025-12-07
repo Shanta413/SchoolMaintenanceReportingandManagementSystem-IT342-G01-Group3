@@ -29,15 +29,12 @@ public class IssueService {
             MultipartFile reportFile
     ) throws Exception {
 
-        // Find user by email
         User reporter = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Find building by ID
         Building building = buildingRepository.findById(req.getBuildingId())
                 .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingId()));
 
-        // Upload image
         String photoUrl = null;
         if (photo != null && !photo.isEmpty()) {
             System.out.println("[CREATE] Uploading ISSUE PHOTO: " + photo.getOriginalFilename());
@@ -45,7 +42,6 @@ public class IssueService {
             System.out.println("[CREATE] Uploaded PHOTO URL: " + photoUrl);
         }
 
-        // Upload PDF/doc file
         String reportUrl = null;
         if (reportFile != null && !reportFile.isEmpty()) {
             System.out.println("[CREATE] Uploading REPORT FILE: " + reportFile.getOriginalFilename());
@@ -55,7 +51,6 @@ public class IssueService {
             System.out.println("[CREATE] No report file uploaded.");
         }
 
-        // Build and save issue
         Issue issue = Issue.builder()
                 .reportedBy(reporter)
                 .building(building)
@@ -72,7 +67,6 @@ public class IssueService {
                 .build();
 
         issueRepository.save(issue);
-
         return mapToResponse(issue);
     }
 
@@ -115,6 +109,7 @@ public class IssueService {
             String id,
             IssueUpdateRequest req,
             String editorEmail,
+            MultipartFile photo,
             MultipartFile reportFile
     ) throws Exception {
 
@@ -122,6 +117,8 @@ public class IssueService {
         System.out.println("IssueID: " + id);
         System.out.println("Received Status: " + req.getIssueStatus());
         System.out.println("Resolver Staff Id: " + req.getResolvedByStaffId());
+        System.out.println("Building Code: " + req.getBuildingCode());
+        System.out.println("Photo file: " + (photo != null ? photo.getOriginalFilename() : "null"));
         System.out.println("Report file: " + (reportFile != null ? reportFile.getOriginalFilename() : "null"));
         System.out.println("===================================");
 
@@ -133,8 +130,6 @@ public class IssueService {
             issue.setIssueTitle(req.getIssueTitle());
         if (req.getIssueDescription() != null)
             issue.setIssueDescription(req.getIssueDescription());
-        if (req.getIssueLocation() != null)
-            issue.setIssueLocation(req.getIssueLocation());
         if (req.getExactLocation() != null)
             issue.setExactLocation(req.getExactLocation());
         if (req.getIssuePriority() != null)
@@ -142,30 +137,47 @@ public class IssueService {
         if (req.getIssueStatus() != null)
             issue.setIssueStatus(IssueStatus.valueOf(req.getIssueStatus().toUpperCase()));
 
-        // RESOLVER STAFF
-        if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
-
-            User resolver = userRepository.findById(req.getResolvedByStaffId())
-                    .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
-
-            issue.setResolvedBy(resolver);
-
-            if ("RESOLVED".equalsIgnoreCase(req.getIssueStatus()) ||
-                    "FIXED".equalsIgnoreCase(req.getIssueStatus())) {
-                issue.setIssueCompletedAt(Instant.now());
-            }
-
-        } else {
-            issue.setResolvedBy(null);
-            issue.setIssueCompletedAt(null);
+        // BUILDING
+        if (req.getBuildingCode() != null && !req.getBuildingCode().isBlank()) {
+            Building newBuilding = buildingRepository.findByBuildingCode(req.getBuildingCode())
+                    .orElseThrow(() -> new RuntimeException("Building not found: " + req.getBuildingCode()));
+            issue.setBuilding(newBuilding);
+            issue.setIssueLocation(newBuilding.getBuildingCode());
+            System.out.println("[UPDATE] Building changed to: " + newBuilding.getBuildingName() + " (" + newBuilding.getBuildingCode() + ")");
         }
 
-        // FILE UPLOAD (DOCUMENT ONLY)
-        if (reportFile != null && !reportFile.isEmpty()) {
-            System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
-            String newUrl = storage.upload(reportFile, "document");
-            issue.setIssueReportFile(newUrl);
-            System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
+        // PHOTO UPLOAD
+        if (photo != null && !photo.isEmpty()) {
+            System.out.println("[UPDATE] Uploading NEW PHOTO: " + photo.getOriginalFilename());
+            String newPhotoUrl = storage.upload(photo, "image");
+            issue.setIssuePhotoUrl(newPhotoUrl);
+            System.out.println("[UPDATE] Uploaded PHOTO URL: " + newPhotoUrl);
+        }
+
+        // ============ STATUS LOGIC ============
+        if ("ACTIVE".equalsIgnoreCase(req.getIssueStatus())) {
+            System.out.println("[UPDATE] Status changed to ACTIVE - clearing resolver and report file");
+            issue.setResolvedBy(null);
+            issue.setIssueCompletedAt(null);
+            // Clear the report file when status is changed back to ACTIVE
+            String currentReportFile = issue.getIssueReportFile();
+            issue.setIssueReportFile(null);
+            System.out.println("[UPDATE] Cleared report file: " + currentReportFile);
+        } else if ("FIXED".equalsIgnoreCase(req.getIssueStatus())) {
+            if (req.getResolvedByStaffId() != null && !req.getResolvedByStaffId().isBlank()) {
+                User resolver = userRepository.findById(req.getResolvedByStaffId())
+                        .orElseThrow(() -> new RuntimeException("Resolver not found: " + req.getResolvedByStaffId()));
+                issue.setResolvedBy(resolver);
+                issue.setIssueCompletedAt(Instant.now());
+                System.out.println("[UPDATE] Resolver set to: " + resolver.getFullname());
+            }
+
+            if (reportFile != null && !reportFile.isEmpty()) {
+                System.out.println("[UPDATE] Uploading NEW REPORT FILE: " + reportFile.getOriginalFilename());
+                String newUrl = storage.upload(reportFile, "document");
+                issue.setIssueReportFile(newUrl);
+                System.out.println("[UPDATE] Uploaded REPORT URL: " + newUrl);
+            }
         }
 
         issueRepository.save(issue);
@@ -191,18 +203,15 @@ public class IssueService {
                 .issueDescription(i.getIssueDescription())
                 .issueLocation(i.getIssueLocation())
                 .exactLocation(i.getExactLocation())
-                .issuePriority(i.getIssuePriority().name())
-                .issueStatus(i.getIssueStatus().name())
+                .issuePriority(i.getIssuePriority() != null ? i.getIssuePriority().name() : null)
+                .issueStatus(i.getIssueStatus() != null ? i.getIssueStatus().name() : null)
                 .issueCreatedAt(i.getIssueCreatedAt())
-                .buildingId(i.getBuilding().getId())
-                .buildingName(i.getBuilding().getBuildingName())
+                .buildingId(i.getBuilding() != null ? i.getBuilding().getId() : null)
+                .buildingName(i.getBuilding() != null ? i.getBuilding().getBuildingName() : null)
                 .issuePhotoUrl(i.getIssuePhotoUrl())
                 .issueReportFile(i.getIssueReportFile())
-
-                // 🔥 MOST IMPORTANT FIELDS
                 .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
                 .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
-
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();
@@ -218,20 +227,16 @@ public class IssueService {
                 .issueDescription(i.getIssueDescription())
                 .issueLocation(i.getIssueLocation())
                 .exactLocation(i.getExactLocation())
-                .issuePriority(i.getIssuePriority().name())
-                .issueStatus(i.getIssueStatus().name())
+                .issuePriority(i.getIssuePriority() != null ? i.getIssuePriority().name() : null)
+                .issueStatus(i.getIssueStatus() != null ? i.getIssueStatus().name() : null)
                 .issuePhotoUrl(i.getIssuePhotoUrl())
                 .issueReportFile(i.getIssueReportFile())
                 .issueCreatedAt(i.getIssueCreatedAt())
                 .issueCompletedAt(i.getIssueCompletedAt())
-                .buildingId(i.getBuilding().getId())
-                .buildingName(i.getBuilding().getBuildingName())
-
-                // Reporter
-                .reportedById(i.getReportedBy().getId())
-                .reportedByName(i.getReportedBy().getFullname())
-
-                // Resolver
+                .buildingId(i.getBuilding() != null ? i.getBuilding().getId() : null)
+                .buildingName(i.getBuilding() != null ? i.getBuilding().getBuildingName() : null)
+                .reportedById(i.getReportedBy() != null ? i.getReportedBy().getId() : null)
+                .reportedByName(i.getReportedBy() != null ? i.getReportedBy().getFullname() : null)
                 .resolvedById(i.getResolvedBy() != null ? i.getResolvedBy().getId() : null)
                 .resolvedByName(i.getResolvedBy() != null ? i.getResolvedBy().getFullname() : null)
                 .build();

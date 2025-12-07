@@ -58,7 +58,7 @@ export default function IssueResolutionModal({
         issueStatus: issue.issueStatus || "ACTIVE",
         issueLocation: issue.issueLocation || "",
         exactLocation: issue.exactLocation || "",
-        resolvedByStaffId: issue.resolvedByStaffId || "",
+        resolvedByStaffId: issue.resolvedById || "",
         buildingCode: issue.buildingCode || "",
       });
       setUploadFile(null);
