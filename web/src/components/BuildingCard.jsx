@@ -1,12 +1,17 @@
 import React from 'react';
 import '../css/components_css/BuildingCard.css';
-import PriorityBadges from './PriorityBadges';
 
 function BuildingCard({ building, onClick }) {
+  // Handle undefined/null issues object
+  const issues = building.issues || { high: 0, medium: 0, low: 0 };
+  
   const totalIssues = 
-    (building.issues.high || 0) + 
-    (building.issues.medium || 0) + 
-    (building.issues.low || 0);
+    (issues.high || 0) + 
+    (issues.medium || 0) + 
+    (issues.low || 0);
+
+  // Debug log
+  console.log('Building:', building.subtitle, 'Total Issues:', totalIssues, 'Issues:', issues);
 
   return (
     <div
@@ -22,38 +27,57 @@ function BuildingCard({ building, onClick }) {
       </div>
 
       <div className="building-info">
-
         {/* Building Code on top (bigger) */}
-        <h2 
-          className="building-code"
-          style={{
-            fontSize: "26px",
-            fontWeight: "700",
-            marginBottom: "4px",
-            color: "#1e293b"
-          }}
-        >
-          {building.subtitle} {/* This is your buildingCode */}
+        <h2 className="building-code">
+          {building.subtitle}
         </h2>
 
         {/* Building Name below (smaller) */}
-        <p 
-          className="building-name"
-          style={{
-            fontSize: "18px",
-            fontWeight: "500",
-            color: "#6366f1",
-            marginBottom: "12px"
-          }}
-        >
+        <p className="building-name">
           {building.name}
         </p>
 
-        <PriorityBadges issues={building.issues} />
-
-        <p className="total-issues">
-          Total Issues: {totalIssues}
-        </p>
+        {totalIssues === 0 ? (
+          <div className="building-card-no-issues">
+            ✓ No Active Issues
+          </div>
+        ) : (
+          <div className="building-card-issues">
+            {/* Total Issues Badge - First and Prominent */}
+            <div className="building-card-total-issues">
+              <span className="building-card-total-count">
+                {totalIssues}
+              </span>
+              {totalIssues === 1 ? 'Issue' : 'Issues'}
+            </div>
+            
+            {/* Priority Badges - Only show if count > 0, removed "Priority" text */}
+            {issues.high > 0 && (
+              <div className="building-card-issue-badge high">
+                <span className="building-card-issue-count">
+                  {issues.high}
+                </span>
+                High
+              </div>
+            )}
+            {issues.medium > 0 && (
+              <div className="building-card-issue-badge medium">
+                <span className="building-card-issue-count">
+                  {issues.medium}
+                </span>
+                Medium
+              </div>
+            )}
+            {issues.low > 0 && (
+              <div className="building-card-issue-badge low">
+                <span className="building-card-issue-count">
+                  {issues.low}
+                </span>
+                Low
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

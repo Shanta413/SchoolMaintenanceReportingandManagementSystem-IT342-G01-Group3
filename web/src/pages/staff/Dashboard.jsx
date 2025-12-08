@@ -113,7 +113,6 @@ export default function Dashboard() {
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              <Legend />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {priorityData.map((entry) => (
                   <Cell key={entry.name} fill={PRIORITY_COLORS[entry.name.toUpperCase()]} />

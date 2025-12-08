@@ -6,13 +6,31 @@
 
 .building-selection {
   min-height: 100vh;
-  background-color: #f8fafc;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  position: relative;
 }
 
-/* Main Content */
+/* Subtle background pattern */
+.building-selection::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main Content with better spacing */
 .main-content {
-  padding: 2.5rem 1.5rem;
+  padding: 3rem 2rem;
+  position: relative;
+  z-index: 1;
 }
 
 .content-wrapper {
@@ -20,138 +38,277 @@
   margin: 0 auto;
 }
 
+/* Enhanced Hero Section */
 .page-title {
-  font-size: 3.5rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+  font-size: 4rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #0f172a 0%, #1e40af 50%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-align: center;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  animation: fadeInDown 0.6s ease-out;
 }
 
 .page-subtitle {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   color: #64748b;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
   font-weight: 400;
   letter-spacing: 0.01em;
+  animation: fadeInUp 0.6s ease-out;
 }
 
-/* Map Link Button */
+/* Enhanced Map Link - More prominent */
 .map-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  color: #2563eb;
-  background: none;
-  border: none;
+  gap: 0.75rem;
+  color: #3b82f6;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #bfdbfe;
   font-size: 0.9375rem;
+  font-weight: 600;
   cursor: pointer;
-  margin: 0 auto 2.5rem;
-  padding: 0.625rem 1rem;
-  transition: all 0.2s;
-  border-radius: 0.5rem;
+  margin: 0 auto 3rem;
+  padding: 1rem 1.75rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.map-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.map-link:hover::before {
+  left: 100%;
 }
 
 .map-link:hover {
-  color: #1d4ed8;
-  background-color: #eff6ff;
+  color: #1e40af;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
 }
 
-/* Search and Filter */
+/* Improved Search and Filter Container */
 .search-filter-container {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2.5rem;
-  justify-content: flex-end;
+  gap: 1.25rem;
+  margin-bottom: 3rem;
+  justify-content: center;
   align-items: stretch;
-  max-width: 800px;
+  max-width: 900px;
   margin-left: auto;
-  margin-right: 0;
+  margin-right: auto;
+  animation: fadeIn 0.8s ease-out;
 }
 
-/* Make search bar larger than sort dropdown */
 .search-filter-container > :first-child {
-  flex: 1.8;
-  min-width: 280px;
-  max-width: 500px;
+  flex: 2;
+  min-width: 320px;
 }
 
 .search-filter-container > :last-child {
-  flex: 0 0 220px;
-  min-width: 220px;
-  max-width: 220px;
+  flex: 0 0 240px;
+  min-width: 240px;
+  max-width: 240px;
 }
 
-/* Buildings Grid */
+/* Enhanced Buildings Grid with stagger animation */
 .buildings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 2rem;
   margin-bottom: 3rem;
+  padding: 1rem 0;
 }
 
-/* Loading and Error States */
+.buildings-grid > * {
+  animation: fadeInScale 0.5s ease-out backwards;
+}
+
+.buildings-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.buildings-grid > *:nth-child(2) { animation-delay: 0.2s; }
+.buildings-grid > *:nth-child(3) { animation-delay: 0.3s; }
+.buildings-grid > *:nth-child(4) { animation-delay: 0.4s; }
+.buildings-grid > *:nth-child(5) { animation-delay: 0.5s; }
+.buildings-grid > *:nth-child(6) { animation-delay: 0.6s; }
+.buildings-grid > *:nth-child(7) { animation-delay: 0.7s; }
+.buildings-grid > *:nth-child(8) { animation-delay: 0.8s; }
+.buildings-grid > *:nth-child(9) { animation-delay: 0.9s; }
+
+/* Loading State - More engaging */
 .loading-state {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 5rem 2rem;
   color: #64748b;
   font-size: 1.125rem;
   font-weight: 500;
+  position: relative;
 }
 
+.loading-state::after {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 48px;
+  margin: 1.5rem auto 0;
+  border: 4px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Error Banner - Enhanced */
 .error-banner {
-  background-color: #fee2e2;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #991b1b;
-  padding: 1rem 1.5rem;
-  border-radius: 0.5rem;
+  padding: 1.25rem 1.75rem;
+  border-radius: 12px;
   text-align: center;
   margin-bottom: 2rem;
-  font-weight: 500;
+  font-weight: 600;
+  border: 2px solid #fca5a5;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+  animation: shake 0.5s;
 }
 
-/* No Results */
+/* No Results - Enhanced */
 .no-results {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 5rem 2rem;
   color: #64748b;
-  font-size: 1.125rem;
 }
 
 .no-results p {
-  font-size: 1.125rem;
-  color: #64748b;
+  font-size: 1.25rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
+.no-results p::before {
+  content: '🔍';
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive Design - Enhanced */
+@media (max-width: 1200px) {
   .buildings-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    gap: 1.75rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .page-title {
+    font-size: 3rem;
   }
 
-  .page-title {
-    font-size: 2.25rem;
+  .main-content {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .buildings-grid {
+    gap: 1.5rem;
   }
 }
 
 @media (max-width: 768px) {
   .page-title {
-    font-size: 2rem;
+    font-size: 2.5rem;
   }
 
   .page-subtitle {
-    font-size: 1rem;
+    font-size: 1.125rem;
+    margin-bottom: 2.5rem;
   }
 
   .search-filter-container {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
   }
 
   .search-filter-container > :first-child,
@@ -165,22 +322,30 @@
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
+
+  .map-link {
+    font-size: 0.875rem;
+    padding: 0.875rem 1.5rem;
+  }
 }
 
 @media (max-width: 480px) {
   .main-content {
-    padding: 1.5rem 1rem;
+    padding: 2rem 1rem;
   }
 
   .page-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
 
   .page-subtitle {
-    font-size: 0.9375rem;
+    font-size: 1rem;
+    margin-bottom: 2rem;
   }
 
   .map-link {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    padding: 0.75rem 1.25rem;
+    gap: 0.5rem;
   }
 }
