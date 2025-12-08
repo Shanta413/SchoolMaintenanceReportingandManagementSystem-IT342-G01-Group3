@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import CitfixLogo from "../components/CitfixLogo";
 import "../css/AuthPage.css";
 import api from "../api/axios";
-import useAuthToken from "../api/useAuthToken"; // 👈 IMPORTANT
+import useAuthToken from "../api/useAuthToken";
 
-export function RegisterPage() { // 👈 NAMED EXPORT
-  useAuthToken(); // 👈 Handle Google redirect if triggered
+export function RegisterPage() { // NAMED EXPORT SAME AS LOGIN
+  useAuthToken(); // Handle Google redirect
 
   const navigate = useNavigate();
 
@@ -17,13 +17,9 @@ export function RegisterPage() { // 👈 NAMED EXPORT
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  // Toggle visibility
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Toast message
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
 
   const API_BASE_URL =
@@ -41,13 +37,13 @@ export function RegisterPage() { // 👈 NAMED EXPORT
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      showToast("Passwords do not match!", "error");
+      showToast("Passwords do not match", "error");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await api.post("/auth/register", {
+      await api.post("/auth/register", {
         fullname: fullName,
         email,
         password,
@@ -56,22 +52,13 @@ export function RegisterPage() { // 👈 NAMED EXPORT
         studentDepartment: department,
       });
 
-      showToast(
-        response.data.message || "Registration successful!",
-        "success"
-      );
-
-      setTimeout(() => navigate("/login"), 1500);
-
+      showToast("Registration successful!", "success");
+      setTimeout(() => navigate("/login"), 1200);
     } catch (error) {
-      const message =
+      const msg =
         error.response?.data?.message ||
-        (error.response?.status === 500
-          ? "Email is already registered!"
-          : "Error during registration.");
-
-      showToast(message, "error");
-
+        "Registration failed! Please try again.";
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -94,7 +81,6 @@ export function RegisterPage() { // 👈 NAMED EXPORT
         className="auth-background"
         style={{ backgroundImage: "url(/loginpic.jpg)" }}
       />
-
       <div className="auth-overlay" />
 
       <div className="auth-card-wrapper register-card-wrapper">
@@ -103,158 +89,94 @@ export function RegisterPage() { // 👈 NAMED EXPORT
             <div className="auth-logo-container">
               <CitfixLogo size="lg" />
             </div>
-            <p className="auth-subtitle">Create your account</p>
+            <p className="auth-subtitle">
+              Create your account to get started
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
+            
+            <input
+              type="text"
+              placeholder="Full Name"
+              className="form-input"
+              required
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
 
-            {/* ===================================== */}
-            {/* ROW LEFT + RIGHT INPUTS */}
-            {/* ===================================== */}
-            <div className="form-grid">
-              {/* LEFT COLUMN */}
-              <div className="form-column">
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                    className="form-input"
-                    required
-                  />
-                </div>
+            <input
+              type="text"
+              placeholder="Student ID"
+              className="form-input"
+              required
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+            />
 
-                <div className="form-group">
-                  <label className="form-label">Student ID</label>
-                  <input
-                    type="text"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="Enter student ID"
-                    className="form-input"
-                    maxLength={11}
-                    required
-                  />
-                </div>
+            <input
+              type="text"
+              placeholder="Department"
+              className="form-input"
+              required
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            />
 
-                <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g., CCS, CEA, CASE"
-                    className="form-input"
-                    maxLength={10}
-                    required
-                  />
-                </div>
-              </div>
+            <input
+              type="email"
+              placeholder="Email"
+              className="form-input"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
 
-              {/* RIGHT COLUMN */}
-              <div className="form-column">
+            <input
+              type="text"
+              placeholder="Phone Number"
+              className="form-input"
+              required
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
 
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="form-input"
-                    required
-                  />
-                </div>
+            <input
+              type="password"
+              placeholder="Password"
+              className="form-input"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
 
-                <div className="form-group">
-                  <label className="form-label">Phone Number</label>
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="form-input"
-                    maxLength={11}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              className="form-input"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
 
-            {/* ====================== PASSWORD ====================== */}
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
-                  className="form-input"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="password-toggle"
-                >
-                  {showPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-            </div>
-
-            {/* ================= CONFIRM PASSWORD ================= */}
-            <div className="form-group">
-              <label className="form-label">Confirm Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter your password"
-                  className="form-input"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowConfirmPassword(!showConfirmPassword)
-                  }
-                  className="password-toggle"
-                >
-                  {showConfirmPassword ? "Hide" : "Show"}
-                </button>
-              </div>
-            </div>
-
-            {/* ============= SUBMIT ================= */}
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <button className="btn btn-primary" disabled={loading}>
               {loading ? "Registering..." : "Register"}
             </button>
 
-            <div className="divider">
-              <div className="divider-line" />
-              <div className="divider-text">OR</div>
-            </div>
+            <div className="divider">OR</div>
 
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleGoogleRegister}
-            >
+            <button type="button" className="btn btn-outline" onClick={handleGoogleRegister}>
               Register with Google
             </button>
 
             <div className="auth-footer-text">
               Already have an account?{" "}
-              <a href="#" onClick={handleLoginClick} className="auth-link">
+              <a href="#" className="auth-link" onClick={handleLoginClick}>
                 Login here
               </a>
             </div>
-
           </form>
+
         </div>
       </div>
     </div>
