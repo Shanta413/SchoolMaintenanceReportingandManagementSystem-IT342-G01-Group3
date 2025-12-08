@@ -4,9 +4,9 @@ import com.smrms.smrms.entity.Role;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.entity.UserRole;
-import com.smrms.smrms.repository.RoleRepository;
+import com. smrms.smrms. repository.RoleRepository;
 import com.smrms.smrms.repository.StudentRepository;
-import com.smrms.smrms.repository.UserRepository;
+import com. smrms.smrms. repository.UserRepository;
 import com.smrms.smrms.repository.UserRoleRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,17 +19,16 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java. io.IOException;
+import java. io. InputStream;
+import java.io. OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java. util.UUID;
 
 /**
- * Handles Google OAuth2 logins:
- * Automatically supports LOCAL and PRODUCTION redirect
+ * Handles Google OAuth2 logins for both LOCAL and PRODUCTION (Railway)
  */
 @Component
 @RequiredArgsConstructor
@@ -50,10 +49,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${supabase.service_key}")
     private String supabaseServiceKey;
 
-    // Read prod frontend from env variable
-    @Value("${frontend.url:https://frontend-production-e168.up.railway.app/login}")
-    private String frontendProdUrl; 
-    // fallback already set in annotation
+    // Frontend URL from environment variable (Railway sets this)
+    @Value("${frontend.url:https://frontend-production-e168.up.railway.app}")
+    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -67,35 +65,37 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String picture = oAuth2User.getAttribute("picture");
 
         if (email == null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Google account returned no email");
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No email from Google account");
             return;
         }
 
-        User user = userRepository.findByEmail(email).orElseGet(() -> {
+        // Find or create user
+        User user = userRepository.findByEmail(email). orElseGet(() -> {
             User newUser = User.builder()
                     .fullname(name)
                     .email(email)
                     .password(null)
                     .authMethod("GOOGLE")
                     .isActive(true)
-                    .createdAt(LocalDateTime.now())
+                    . createdAt(LocalDateTime.now())
                     .build();
             return userRepository.save(newUser);
         });
 
-        // Upload avatar once
+        // Upload avatar once if missing
         if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) && picture != null) {
             try {
                 String uploadedUrl = uploadImageToSupabase(picture);
                 user.setAvatarUrl(uploadedUrl);
-                userRepository.save(user);
-            } catch (Exception ignored) {
+                System.out.println("✅ Avatar uploaded: " + uploadedUrl);
+            } catch (Exception e) {
                 user.setAvatarUrl(picture);
-                userRepository.save(user);
+                System.err.println("⚠️ Avatar upload failed, using Google URL: " + e.getMessage());
             }
+            userRepository.save(user);
         }
 
-        // Assign STUDENT role if missing
+        // Ensure STUDENT role
         Role studentRole = roleRepository.findByRoleName("STUDENT")
                 .orElseGet(() -> roleRepository.save(
                         Role.builder()
@@ -104,46 +104,43 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                                 .build()
                 ));
 
-        if (!userRoleRepository.existsByUserAndRole(user, studentRole)) {
-            userRoleRepository.save(
-                    UserRole.builder()
-                            .user(user)
-                            .role(studentRole)
-                            .userRoleCreatedAt(LocalDateTime.now())
-                            .build()
-            );
+        if (! userRoleRepository.existsByUserAndRole(user, studentRole)) {
+            userRoleRepository.save(UserRole.builder()
+                    .user(user)
+                    .role(studentRole)
+                    .userRoleCreatedAt(LocalDateTime. now())
+                    .build());
         }
 
         // Ensure student record
         studentRepository.findByUser(user).orElseGet(() ->
-                studentRepository.save(
-                        Student.builder()
-                                .user(user)
-                                .studentDepartment("null")
-                                .studentIdNumber(null)
-                                .build()
-                )
+                studentRepository.save(Student.builder()
+                        .user(user)
+                        .studentDepartment("null")
+                        .studentIdNumber(null)
+                        .build())
         );
 
-        // issue JWT
+        // Generate JWT
         String token = jwtService.generateToken(email);
-
         String roleName = userRoleRepository.findByUser(user)
                 .map(ur -> ur.getRole().getRoleName())
                 .orElse("STUDENT");
 
-        /* 🌍 SMART REDIRECT LOGIC (LOCAL OR PRODUCTION) */
+        // 🌍 SMART REDIRECT: Local vs Production
         String requestHost = request.getServerName();
-        String redirectUrl;
+        String redirectBase;
 
         if (requestHost.equals("localhost") || requestHost.equals("127.0.0.1")) {
-            redirectUrl = "http://localhost:5173/login";
+            redirectBase = "http://localhost:5173";
         } else {
-            redirectUrl = frontendProdUrl; // read from Railway env
+            redirectBase = frontendUrl;
         }
 
-        String finalRedirect = redirectUrl + "?token=" + token + "&role=" + roleName;
+        // ✅ Redirect back to /login with token and role
+        String finalRedirect = redirectBase + "/login?token=" + token + "&role=" + roleName;
 
+        System.out.println("🔀 Redirecting to: " + finalRedirect);
         response.sendRedirect(finalRedirect);
     }
 
@@ -165,7 +162,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             downloadedBytes = buffer.toByteArray();
         }
 
-        String fileName = UUID.randomUUID() + ".jpg";
+        String fileName = UUID.randomUUID() + ". jpg";
         URL uploadUrl = new URL(supabaseUrl + "/storage/v1/object/" + supabaseBucket + "/" + fileName);
 
         HttpURLConnection uploadConn = (HttpURLConnection) uploadUrl.openConnection();
@@ -178,6 +175,11 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         try (OutputStream os = uploadConn.getOutputStream()) {
             os.write(downloadedBytes);
+        }
+
+        int uploadCode = uploadConn.getResponseCode();
+        if (uploadCode != 200 && uploadCode != 201) {
+            throw new IOException("Supabase upload failed (HTTP " + uploadCode + ")");
         }
 
         return supabaseUrl + "/storage/v1/object/public/" + supabaseBucket + "/" + fileName;
