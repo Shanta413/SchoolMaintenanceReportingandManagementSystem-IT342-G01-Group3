@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import CitfixLogo from "../components/CitfixLogo";
 import "../css/AuthPage.css";
 import api from "../api/axios";
-import useAuthToken from "../api/useAuthToken"; // 👈 IMPORT FIX
+import useAuthToken from "../api/useAuthToken"; // 👈 IMPORTANT
 
-export default function RegisterPage() {
-  useAuthToken(); // 👈 FIX: Handles Google callback
+export function RegisterPage() { // 👈 NAMED EXPORT
+  useAuthToken(); // 👈 Handle Google redirect if triggered
 
   const navigate = useNavigate();
 
@@ -18,10 +18,12 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
+  // Toggle visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Toast message
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
 
   const API_BASE_URL =
@@ -54,16 +56,21 @@ export default function RegisterPage() {
         studentDepartment: department,
       });
 
-      showToast(response.data.message || "Registration successful!", "success");
+      showToast(
+        response.data.message || "Registration successful!",
+        "success"
+      );
+
       setTimeout(() => navigate("/login"), 1500);
 
     } catch (error) {
-      const msg =
+      const message =
         error.response?.data?.message ||
         (error.response?.status === 500
-          ? "Email is already used!"
+          ? "Email is already registered!"
           : "Error during registration.");
-      showToast(msg, "error");
+
+      showToast(message, "error");
 
     } finally {
       setLoading(false);
@@ -87,6 +94,7 @@ export default function RegisterPage() {
         className="auth-background"
         style={{ backgroundImage: "url(/loginpic.jpg)" }}
       />
+
       <div className="auth-overlay" />
 
       <div className="auth-card-wrapper register-card-wrapper">
@@ -95,17 +103,20 @@ export default function RegisterPage() {
             <div className="auth-logo-container">
               <CitfixLogo size="lg" />
             </div>
-            <p className="auth-subtitle">Create your account to get started</p>
+            <p className="auth-subtitle">Create your account</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
 
+            {/* ===================================== */}
+            {/* ROW LEFT + RIGHT INPUTS */}
+            {/* ===================================== */}
             <div className="form-grid">
+              {/* LEFT COLUMN */}
               <div className="form-column">
                 <div className="form-group">
-                  <label htmlFor="fullName" className="form-label">Full Name</label>
+                  <label className="form-label">Full Name</label>
                   <input
-                    id="fullName"
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -116,13 +127,12 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="studentId" className="form-label">Student ID</label>
+                  <label className="form-label">Student ID</label>
                   <input
-                    id="studentId"
                     type="text"
                     value={studentId}
                     onChange={(e) => setStudentId(e.target.value)}
-                    placeholder="Enter your student ID"
+                    placeholder="Enter student ID"
                     className="form-input"
                     maxLength={11}
                     required
@@ -130,13 +140,12 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="department" className="form-label">Department</label>
+                  <label className="form-label">Department</label>
                   <input
-                    id="department"
                     type="text"
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g., CCS, CEA, CASE, CNAS, CCJ"
+                    placeholder="e.g., CCS, CEA, CASE"
                     className="form-input"
                     maxLength={10}
                     required
@@ -144,11 +153,12 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* RIGHT COLUMN */}
               <div className="form-column">
+
                 <div className="form-group">
-                  <label htmlFor="email" className="form-label">Email</label>
+                  <label className="form-label">Email</label>
                   <input
-                    id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -159,13 +169,12 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="phoneNumber" className="form-label">Phone Number</label>
+                  <label className="form-label">Phone Number</label>
                   <input
-                    id="phoneNumber"
                     type="text"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Enter your phone number"
+                    placeholder="Enter phone number"
                     className="form-input"
                     maxLength={11}
                     required
@@ -174,34 +183,33 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* ====================== PASSWORD ====================== */}
             <div className="form-group">
-              <label htmlFor="password" className="form-label">Password</label>
+              <label className="form-label">Password</label>
               <div className="password-input-wrapper">
                 <input
-                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create a password"
                   className="form-input"
-                  minLength={8}
                   required
                 />
                 <button
                   type="button"
-                  className="password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
+                  className="password-toggle"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
 
+            {/* ================= CONFIRM PASSWORD ================= */}
             <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+              <label className="form-label">Confirm Password</label>
               <div className="password-input-wrapper">
                 <input
-                  id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -211,21 +219,24 @@ export default function RegisterPage() {
                 />
                 <button
                   type="button"
+                  onClick={() =>
+                    setShowConfirmPassword(!showConfirmPassword)
+                  }
                   className="password-toggle"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? "Hide" : "Show"}
                 </button>
               </div>
             </div>
 
+            {/* ============= SUBMIT ================= */}
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? "Registering..." : "Register"}
             </button>
 
             <div className="divider">
               <div className="divider-line" />
-              <div className="divider-text"><span>OR</span></div>
+              <div className="divider-text">OR</div>
             </div>
 
             <button
