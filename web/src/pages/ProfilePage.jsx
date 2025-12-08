@@ -13,7 +13,7 @@ import {
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = "https://backend-production-4aa1.up.railway.app/api";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
