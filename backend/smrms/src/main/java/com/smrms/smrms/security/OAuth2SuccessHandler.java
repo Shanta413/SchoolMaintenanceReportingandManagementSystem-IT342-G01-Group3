@@ -1,7 +1,7 @@
 package com.smrms.smrms.security;
 
 import com.smrms.smrms.entity.Role;
-import com.smrms.smrms.smrms.entity.Student;
+import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.entity.UserRole;
 import com.smrms.smrms.repository.RoleRepository;
