@@ -6,6 +6,7 @@ import com.smrms.smrms.dto.BuildingSummaryDTO;
 import com.smrms.smrms.dto.IssueCountDTO;
 import com.smrms.smrms.entity.Building;
 import com.smrms.smrms.entity.IssuePriority;
+import com.smrms.smrms.entity.IssueStatus;
 import com.smrms.smrms.repository.BuildingRepository;
 import com.smrms.smrms.repository.IssueRepository;
 import lombok.RequiredArgsConstructor;
@@ -123,14 +124,22 @@ public class BuildingService {
 
     /**
      * GET ALL BUILDINGS + ISSUE COUNTS
+     * ✅ FIXED: Now only counts ACTIVE issues (excludes FIXED)
      */
     public List<BuildingSummaryDTO> getAllBuildingsWithIssueCount() {
         List<Building> buildings = buildingRepository.findAll();
 
         return buildings.stream().map(b -> {
-            long high = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.HIGH);
-            long medium = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.MEDIUM);
-            long low = issueRepository.countByBuildingAndIssuePriority(b, IssuePriority.LOW);
+            // ✅ Only count issues that are NOT fixed
+            long high = issueRepository.countByBuildingAndIssuePriorityAndIssueStatusNot(
+                b, IssuePriority.HIGH, IssueStatus.FIXED
+            );
+            long medium = issueRepository.countByBuildingAndIssuePriorityAndIssueStatusNot(
+                b, IssuePriority.MEDIUM, IssueStatus.FIXED
+            );
+            long low = issueRepository.countByBuildingAndIssuePriorityAndIssueStatusNot(
+                b, IssuePriority.LOW, IssueStatus.FIXED
+            );
 
             IssueCountDTO count = IssueCountDTO.builder()
                     .high(high)

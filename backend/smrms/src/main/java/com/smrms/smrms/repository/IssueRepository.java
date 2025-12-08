@@ -35,12 +35,19 @@ public interface IssueRepository extends JpaRepository<Issue, String> {
 
     List<Issue> findAllByOrderByIssueCreatedAtDesc();
 
+    // OLD: Count all issues (including resolved)
     long countByBuildingAndIssuePriority(Building building, IssuePriority priority);
+
+    // ✅ NEW: Count only ACTIVE issues (excludes RESOLVED)
+    long countByBuildingAndIssuePriorityAndIssueStatusNot(
+        Building building, 
+        IssuePriority priority, 
+        IssueStatus excludeStatus
+    );
 
     long countByBuilding(Building building);
 
     long countByBuildingAndIssueStatus(Building building, IssueStatus status);
-
 
     List<Issue> findByReportedByIdOrderByIssueCreatedAtDesc(String userId);
 }

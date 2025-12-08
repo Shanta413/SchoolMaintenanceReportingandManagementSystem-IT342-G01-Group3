@@ -11,7 +11,7 @@ import AdminBuildingCard from "../../components/staff/AdminBuildingCard";
 import SearchBar from "../../components/SearchBar";
 import FilterDropdown from "../../components/FilterDropdown";
 
-import useAutoRefresh from "../../hooks/useAutoRefresh"; // 🔥 Auto-refresh import
+import useAutoRefresh from "../../hooks/useAutoRefresh";
 
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
@@ -48,7 +48,6 @@ export default function Issues() {
   const fetchBuildings = useCallback(async () => {
     try {
       const response = await getAllBuildings();
-
       if (response) setBuildings(response);
     } catch (err) {
       console.error("Error fetching buildings:", err);
@@ -63,7 +62,7 @@ export default function Issues() {
     fetchBuildings();
   }, [fetchBuildings]);
 
-  // 🔥 AUTO-REFRESH every 3 seconds
+  // AUTO-REFRESH every 3 seconds
   useAutoRefresh(fetchBuildings, 3000, true);
 
   // ============================================
@@ -130,7 +129,6 @@ export default function Issues() {
   // ============================================
   const getTotalIssues = useCallback((b) => {
     if (!b.issueCount) return 0;
-
     return (
       (b.issueCount.high || 0) +
       (b.issueCount.medium || 0) +
@@ -190,60 +188,64 @@ export default function Issues() {
   // ============================================
   return (
     <div className="issues-page">
+      <main className="main-content">
+        <div className="content-wrapper">
+          {/* HEADER */}
+          <div className="issues-header">
+            <div>
+              <h1 className="page-title">Buildings Overview</h1>
+              <p className="page-subtitle">Manage buildings and track maintenance issues</p>
+            </div>
+            <button className="create-building-btn" onClick={() => setShowModal(true)}>
+              + Create Building
+            </button>
+          </div>
 
-      {/* HEADER */}
-      <div className="issues-header">
-        <h1>Buildings Overview</h1>
+          {/* ERROR */}
+          {error && <div className="error-banner">{error}</div>}
 
-        <button className="create-building-btn" onClick={() => setShowModal(true)}>
-          + Create Building
-        </button>
-      </div>
-
-      {/* ERROR */}
-      {error && <div className="error-banner">⚠️ {error}</div>}
-
-      {/* SEARCH + FILTER */}
-      <div className="search-filter-container">
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search buildings by name or code..."
-        />
-
-        <FilterDropdown
-          value={sortFilter}
-          onChange={setSortFilter}
-          options={filterOptions}
-          placeholder="Sort By"
-        />
-      </div>
-
-      {/* LOADING */}
-      {loading ? (
-        <div className="loading">Loading...</div>
-      ) : filteredAndSortedBuildings.length === 0 ? (
-        <div className="empty-state">
-          <h3>No Buildings Found</h3>
-          <p>
-            {searchQuery
-              ? "No buildings match your search criteria"
-              : "Create your first building to start tracking issues"}
-          </p>
-        </div>
-      ) : (
-        <div className="buildings-grid">
-          {filteredAndSortedBuildings.map((building) => (
-            <AdminBuildingCard
-              key={building.id}
-              building={building}
-              onClick={() => handleBuildingClick(building)}
-              onEdit={() => handleEditClick(building)}
-              onDelete={() => handleDeleteClick(building)}
+          {/* SEARCH + FILTER */}
+          <div className="search-filter-container">
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search buildings..."
             />
-          ))}
+
+            <FilterDropdown
+              value={sortFilter}
+              onChange={setSortFilter}
+              options={filterOptions}
+              placeholder="Filter & Sort"
+            />
+          </div>
+
+          {/* LOADING */}
+          {loading ? (
+            <div className="loading-state">Loading buildings...</div>
+          ) : filteredAndSortedBuildings.length === 0 ? (
+            <div className="no-results">
+              <p>
+                {searchQuery
+                  ? "No buildings found matching your search."
+                  : "No buildings found. Create your first building to get started."}
+              </p>
+            </div>
+          ) : (
+            <div className="buildings-grid">
+              {filteredAndSortedBuildings.map((building) => (
+                <AdminBuildingCard
+                  key={building.id}
+                  building={building}
+                  onClick={() => handleBuildingClick(building)}
+                  onEdit={() => handleEditClick(building)}
+                  onDelete={() => handleDeleteClick(building)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </main>
 
       {/* CREATE MODAL */}
       <CreateBuildingModal
@@ -265,15 +267,12 @@ export default function Issues() {
         <div className="modal-overlay">
           <div className="modal-content delete-modal">
             <h2>Delete Building</h2>
-
             <p>
               Are you sure you want to delete{" "}
               <strong>{selectedBuilding.buildingName}</strong>?
             </p>
-
             <div className="modal-actions">
               <button onClick={() => setShowDeleteModal(false)}>Cancel</button>
-
               <button className="danger-btn" onClick={handleDeleteConfirm}>
                 Delete
               </button>
