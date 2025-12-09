@@ -1,18 +1,18 @@
-package com.smrms.smrms.controller;
+package com.smrms. smrms.controller;
 
 import com.smrms.smrms.dto.MaintenanceStaffUpsertRequest;
 import com.smrms.smrms.dto.MaintenanceStaffViewDTO;
 import com.smrms.smrms.entity.*;
-import com.smrms.smrms.repository.*;
+import com.smrms. smrms.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework. security.access.prepost.PreAuthorize;
+import org. springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind. annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java. util.*;
 
 @RestController
 @RequestMapping("/api/staff")
@@ -28,10 +28,29 @@ public class MaintenanceStaffController {
     private final IssueRepository issueRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // GET: list
+    // GET:  list
     @GetMapping
     public ResponseEntity<List<MaintenanceStaffViewDTO>> list() {
-        return ResponseEntity.ok(staffRepo.findAllStaffViews());
+        // ✅ CHANGED: Manual mapping instead of using repository query
+        List<MaintenanceStaff> staffList = staffRepo.findAll();
+        List<MaintenanceStaffViewDTO> dtos = new ArrayList<>();
+
+        for (MaintenanceStaff ms : staffList) {
+            User u = ms.getUser();
+            MaintenanceStaffViewDTO dto = MaintenanceStaffViewDTO. builder()
+                    .id(ms.getId())
+                    . userId(u.getId())
+                    .fullname(u.getFullname())
+                    .email(u.getEmail())
+                    .mobileNumber(u. getMobileNumber())
+                    . staffId(ms.getStaffId())
+                    .authMethod(u.getAuthMethod())
+                    .createdAt(u. getCreatedAt())  // ✅ ADDED
+                    .build();
+            dtos.add(dto);
+        }
+
+        return ResponseEntity.ok(dtos);
     }
 
     // GET: one
@@ -39,17 +58,18 @@ public class MaintenanceStaffController {
     public ResponseEntity<MaintenanceStaffViewDTO> getOne(@PathVariable String id) {
         return staffRepo.findById(id)
                 .map(ms -> {
-                    User u = ms.getUser();
+                    User u = ms. getUser();
                     return ResponseEntity.ok(
-                            new MaintenanceStaffViewDTO(
-                                    ms.getId(),
-                                    u.getId(),
-                                    u.getFullname(),
-                                    u.getEmail(),
-                                    u.getMobileNumber(),
-                                    ms.getStaffId(),
-                                    u.getAuthMethod()
-                            )
+                            MaintenanceStaffViewDTO.builder()
+                                    .id(ms.getId())
+                                    .userId(u. getId())
+                                    .fullname(u.getFullname())
+                                    .email(u.getEmail())
+                                    .mobileNumber(u.getMobileNumber())
+                                    . staffId(ms.getStaffId())
+                                    .authMethod(u.getAuthMethod())
+                                    .createdAt(u.getCreatedAt())  // ✅ ADDED
+                                    .build()
                     );
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -58,7 +78,7 @@ public class MaintenanceStaffController {
     // POST: create
     @PostMapping
     @Transactional
-    public ResponseEntity<?> create(@RequestBody MaintenanceStaffUpsertRequest req) {
+    public ResponseEntity<? > create(@RequestBody MaintenanceStaffUpsertRequest req) {
 
         if (req.getEmail() == null || req.getEmail().isBlank()) {
             return ResponseEntity.badRequest().body("Email is required");
@@ -72,14 +92,14 @@ public class MaintenanceStaffController {
             return ResponseEntity.badRequest().body("Staff ID already exists");
         }
 
-        // user: reuse if existing or create new
-        User user = userRepo.findByEmail(req.getEmail()).orElseGet(() -> {
+        // user:  reuse if existing or create new
+        User user = userRepo.findByEmail(req. getEmail()).orElseGet(() -> {
             String pwd = (req.getPassword() != null && !req.getPassword().isBlank())
                     ? req.getPassword()
                     : "password123";
 
             User newUser = User.builder()
-                    .fullname(Optional.ofNullable(req.getFullname()).orElse("Maintenance Staff"))
+                    .fullname(Optional.ofNullable(req. getFullname()).orElse("Maintenance Staff"))
                     .email(req.getEmail())
                     .password(passwordEncoder.encode(pwd))
                     .mobileNumber(req.getMobileNumber())
@@ -125,14 +145,14 @@ public class MaintenanceStaffController {
         return ResponseEntity.ok("Maintenance staff created");
     }
 
-    // PUT: update
+    // PUT:  update
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<?> update(@PathVariable String id, @RequestBody MaintenanceStaffUpsertRequest req) {
+    public ResponseEntity<? > update(@PathVariable String id, @RequestBody MaintenanceStaffUpsertRequest req) {
 
         Optional<MaintenanceStaff> optional = staffRepo.findById(id);
         if (optional.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity. notFound().build();
         }
 
         MaintenanceStaff ms = optional.get();
@@ -152,17 +172,17 @@ public class MaintenanceStaffController {
             user.setPasswordUpdatedAt(LocalDateTime.now());
         }
 
-        user.setUpdateAt(LocalDateTime.now());
+        user. setUpdateAt(LocalDateTime.now());
         userRepo.save(user);
 
         // update staff ID
         if (req.getStaffId() != null && !req.getStaffId().isBlank()) {
 
-            if (!req.getStaffId().equals(ms.getStaffId()) && staffRepo.existsByStaffId(req.getStaffId())) {
+            if (! req.getStaffId().equals(ms.getStaffId()) && staffRepo.existsByStaffId(req.getStaffId())) {
                 return ResponseEntity.badRequest().body("Staff ID already exists");
             }
 
-            ms.setStaffId(req.getStaffId());
+            ms. setStaffId(req.getStaffId());
         }
 
         staffRepo.save(ms);
@@ -180,7 +200,7 @@ public class MaintenanceStaffController {
             return ResponseEntity.status(404).body("Maintenance staff not found");
         }
 
-        MaintenanceStaff ms = optional.get();
+        MaintenanceStaff ms = optional. get();
         User user = ms.getUser();
 
         // nullify foreign references in issues table
@@ -191,7 +211,7 @@ public class MaintenanceStaffController {
             }
 
             if (issue.getResolvedBy() != null && issue.getResolvedBy().getId().equals(user.getId())) {
-                issue.setResolvedBy(null);
+                issue. setResolvedBy(null);
                 issueRepository.save(issue);
             }
         });

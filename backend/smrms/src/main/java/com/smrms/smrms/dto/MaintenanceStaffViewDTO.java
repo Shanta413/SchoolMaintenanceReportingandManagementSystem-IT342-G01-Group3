@@ -1,17 +1,21 @@
 package com.smrms.smrms.dto;
 
 import lombok.*;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MaintenanceStaffViewDTO {
-    private String id;         // maintenance_staff.id
-    private String userId;     // user.id
+public class StudentViewDTO {
+    private String id;
     private String fullname;
     private String email;
     private String mobileNumber;
-    private String staffId;
-    private String authMethod;  // NEW
+    private String studentDepartment;
+    private String studentIdNumber;
+    private String password;
+    private String avatarUrl;
+    private String authMethod;
+    private LocalDateTime createdAt;  // ADD THIS LINE
 }

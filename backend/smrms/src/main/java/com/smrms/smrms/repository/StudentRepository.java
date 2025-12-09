@@ -3,7 +3,7 @@ package com.smrms.smrms.repository;
 import com.smrms.smrms.dto.StudentViewDTO;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa. repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface StudentRepository extends JpaRepository<Student, String> {
 
     @Query("""
-    SELECT new com.smrms.smrms.dto.StudentViewDTO(
+    SELECT new com.smrms. smrms.dto.StudentViewDTO(
         s.id,
         u.fullname,
         u.email,
@@ -22,12 +22,13 @@ public interface StudentRepository extends JpaRepository<Student, String> {
         s.studentDepartment,
         s.studentIdNumber,
         '',
-        u.avatarUrl,
-        u.authMethod
+        u. avatarUrl,
+        u. authMethod,
+        u.createdAt
     )
     FROM Student s
     JOIN s.user u
-    ORDER BY u.fullname ASC
+    ORDER BY u.createdAt ASC
     """)
     List<StudentViewDTO> findAllStudentViews();
 

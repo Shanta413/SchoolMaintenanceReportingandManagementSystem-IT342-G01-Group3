@@ -1,6 +1,7 @@
 package com.smrms.smrms.dto;
 
 import lombok.*;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -13,7 +14,8 @@ public class StudentViewDTO {
     private String mobileNumber;
     private String studentDepartment;
     private String studentIdNumber;
-    private String password;   // <-- This is #7
+    private String password;
     private String avatarUrl;
     private String authMethod;
+    private LocalDateTime createdAt;  // ADD THIS LINE
 }

@@ -17,17 +17,18 @@ public interface MaintenanceStaffRepository extends JpaRepository<MaintenanceSta
 
     @Query("""
         SELECT new com.smrms.smrms.dto.MaintenanceStaffViewDTO(
-            ms.id,
+            ms. id,
             u.id,
             u.fullname,
             u.email,
             u.mobileNumber,
             ms.staffId,
-            u.authMethod
+            u. authMethod,
+            u.createdAt
         )
         FROM MaintenanceStaff ms
         JOIN ms.user u
-        ORDER BY u.fullname ASC
+        ORDER BY u.createdAt ASC
         """)
-            List<MaintenanceStaffViewDTO> findAllStaffViews();
+    List<MaintenanceStaffViewDTO> findAllStaffViews();
 }

@@ -5,20 +5,20 @@ import com.smrms.smrms.entity.Role;
 import com.smrms.smrms.entity.Student;
 import com.smrms.smrms.entity.User;
 import com.smrms.smrms.entity.UserRole;
-import com.smrms.smrms.repository.RoleRepository;
+import com. smrms.smrms. repository.RoleRepository;
 import com.smrms.smrms.repository.StudentRepository;
 import com.smrms.smrms.repository.UserRepository;
-import com.smrms.smrms.repository.UserRoleRepository;
+import com.smrms. smrms.repository.UserRoleRepository;
 import com.smrms.smrms.repository.IssueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework. http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind. annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java. util. ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +53,7 @@ public class StudentController {
                     .authMethod(user.getAuthMethod())
                     .studentDepartment(student.getStudentDepartment())
                     .studentIdNumber(student.getStudentIdNumber())
+                    .createdAt(user.getCreatedAt())  // ✅ ADDED
                     .build();
 
             studentDTOs.add(dto);
@@ -74,10 +75,11 @@ public class StudentController {
                 .fullname(user.getFullname())
                 .email(user.getEmail())
                 .mobileNumber(user.getMobileNumber())
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(user. getAvatarUrl())
                 .authMethod(user.getAuthMethod())
                 .studentDepartment(student.getStudentDepartment())
                 .studentIdNumber(student.getStudentIdNumber())
+                .createdAt(user.getCreatedAt())  // ✅ ADDED
                 .build();
 
         return ResponseEntity.ok(dto);
@@ -99,7 +101,7 @@ public class StudentController {
                     .email(studentDTO.getEmail())
                     .mobileNumber(studentDTO.getMobileNumber())
                     .password(passwordEncoder.encode(studentDTO.getPassword()))
-                    .authMethod("LOCAL")
+                    . authMethod("LOCAL")
                     .isActive(true)
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -113,7 +115,7 @@ public class StudentController {
             UserRole userRole = UserRole.builder()
                     .user(user)
                     .role(studentRole)
-                    .userRoleCreatedAt(LocalDateTime.now())
+                    .userRoleCreatedAt(LocalDateTime. now())
                     .build();
 
             userRoleRepository.save(userRole);
@@ -122,21 +124,22 @@ public class StudentController {
             Student student = Student.builder()
                     .user(user)
                     .studentDepartment(studentDTO.getStudentDepartment())
-                    .studentIdNumber(studentDTO.getStudentIdNumber())
+                    .studentIdNumber(studentDTO. getStudentIdNumber())
                     .build();
 
             student = studentRepository.save(student);
 
             // Build response DTO
             StudentViewDTO responseDTO = StudentViewDTO.builder()
-                    .id(student.getId())
+                    .id(student. getId())
                     .fullname(user.getFullname())
                     .email(user.getEmail())
                     .mobileNumber(user.getMobileNumber())
                     .avatarUrl(user.getAvatarUrl())
                     .authMethod(user.getAuthMethod())
-                    .studentDepartment(student.getStudentDepartment())
+                    .studentDepartment(student. getStudentDepartment())
                     .studentIdNumber(student.getStudentIdNumber())
+                    .createdAt(user.getCreatedAt())  // ✅ ADDED
                     .build();
 
             return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
@@ -158,7 +161,7 @@ public class StudentController {
                 student.setStudentDepartment(studentDTO.getStudentDepartment());
             }
 
-            if (studentDTO.getStudentIdNumber() != null) {
+            if (studentDTO. getStudentIdNumber() != null) {
                 student.setStudentIdNumber(studentDTO.getStudentIdNumber());
             }
 
@@ -168,13 +171,14 @@ public class StudentController {
 
             StudentViewDTO responseDTO = StudentViewDTO.builder()
                     .id(student.getId())
-                    .fullname(user.getFullname())
-                    .email(user.getEmail())
+                    .fullname(user. getFullname())
+                    . email(user.getEmail())
                     .mobileNumber(user.getMobileNumber())
                     .avatarUrl(user.getAvatarUrl())
                     .authMethod(user.getAuthMethod())
                     .studentDepartment(student.getStudentDepartment())
-                    .studentIdNumber(student.getStudentIdNumber())
+                    . studentIdNumber(student.getStudentIdNumber())
+                    . createdAt(user.getCreatedAt())  // ✅ ADDED
                     .build();
 
             return ResponseEntity.ok(responseDTO);
@@ -206,12 +210,12 @@ public class StudentController {
                 if (issue.getResolvedBy() != null &&
                         issue.getResolvedBy().getId().equals(user.getId())) {
                     issue.setResolvedBy(null);
-                    issueRepository.save(issue);
+                    issueRepository. save(issue);
                 }
             });
 
             // Delete UserRoles
-            userRoleRepository.findAll().stream()
+            userRoleRepository. findAll().stream()
                     .filter(ur -> ur.getUser().getId().equals(user.getId()))
                     .forEach(userRoleRepository::delete);
 
