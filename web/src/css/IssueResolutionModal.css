@@ -71,6 +71,20 @@
   margin-bottom: 16px;
 }
 
+.form-group-highlight {
+  position: relative;
+}
+
+.form-group-highlight .form-input {
+  border: 2px solid #f59e0b;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.form-group-highlight .form-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
 .form-row {
   display: flex;
   gap: 12px;

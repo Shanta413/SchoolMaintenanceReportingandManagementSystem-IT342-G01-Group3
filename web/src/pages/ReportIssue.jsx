@@ -7,10 +7,14 @@ import Header from "../components/Header";
 import { Upload, CheckCircle } from "lucide-react";
 import "../css/AuthPage.css";
 import "../css/ReportIssue.css";
+import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
 
 export default function ReportIssue() {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // ← ADD THIS
+  const { InactivityModal } = useInactivityLogout("STUDENT");
 
   // Detect Edit mode
   const isEdit = location.state?.edit === true;
@@ -301,6 +305,9 @@ export default function ReportIssue() {
 
       {/* Toast */}
       {toast.message && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
+
+      {/* Inactivity Modal - ADD THIS */}
+      {InactivityModal}
     </div>
   );
 }

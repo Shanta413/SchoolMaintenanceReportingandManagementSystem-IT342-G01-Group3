@@ -12,11 +12,17 @@ import {
 } from "lucide-react";
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
+import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
 
-const API_BASE = "https://backend-production-4aa1.up.railway.app/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  "https://backend-production-4aa1.up.railway.app/api";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  
+  // ← ADD THIS
+  const { InactivityModal } = useInactivityLogout("STUDENT");
 
   // ====== State hooks ======
   const [formData, setFormData] = useState({
@@ -466,6 +472,9 @@ const ProfilePage = () => {
           </form>
         </div>
       </div>
+
+      {/* Inactivity Modal - ADD THIS */}
+      {InactivityModal}
     </div>
   );
 };

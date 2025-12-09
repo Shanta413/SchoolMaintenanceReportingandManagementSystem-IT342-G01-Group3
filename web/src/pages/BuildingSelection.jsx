@@ -10,7 +10,8 @@ import CampusMapModal from "../components/CampusMapModal";
 
 import "../css/BuildingSelection.css";
 import { getAllBuildings } from "../api/building";
-import useAutoRefresh from "../hooks/useAutoRefresh"; // 🟢 Auto-refresh hook
+import useAutoRefresh from "../hooks/useAutoRefresh";
+import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
 
 const filterOptions = [
   { value: "highest", label: "Highest Issues First" },
@@ -29,6 +30,9 @@ function BuildingSelection() {
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
+  
+  // ← ADD THIS
+  const { InactivityModal } = useInactivityLogout("STUDENT");
 
   // 🟢 AUTH CHECK
   useEffect(() => {
@@ -156,8 +160,8 @@ function BuildingSelection() {
                     key={b.id}
                     building={{
                       id: b.id,
-                      name: b.buildingName, // small text under code
-                      subtitle: b.buildingCode, // big text on top
+                      name: b.buildingName,
+                      subtitle: b.buildingCode,
                       image: b.buildingImageUrl,
                       issues: b.issueCount || { high: 0, medium: 0, low: 0 },
                     }}
@@ -174,6 +178,9 @@ function BuildingSelection() {
         isOpen={showMapModal}
         onClose={() => setShowMapModal(false)}
       />
+
+      {/* Inactivity Modal - ADD THIS */}
+      {InactivityModal}
     </div>
   );
 }

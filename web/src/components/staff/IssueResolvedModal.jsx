@@ -342,10 +342,14 @@ export default function IssueResolvedModal({
                   <label className="form-label">Status</label>
                   <select
                     name="issueStatus"
-                    className="form-input"
+                    className="form-input form-input-status-highlight"
                     value={form.issueStatus}
                     onChange={handleChange}
                     disabled={isSaving}
+                    style={{
+                      border: '2px solid #f59e0b',
+                      background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                    }}
                   >
                     {STATUS_OPTIONS.map(opt => (
                       <option value={opt.value} key={opt.value}>{opt.label}</option>

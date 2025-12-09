@@ -34,7 +34,6 @@ function Users() {
   };
 
   const getAvatarColor = (name, authMethod) => {
-    // Use red-ish for Google, blue-ish for Local for extra clarity!
     if (authMethod === "GOOGLE") return "#ea4335";
     const colors = ["#C8E6C9", "#B3E5FC", "#F8BBD0", "#FFCCBC", "#D1C4E9", "#FFF9C4"];
     if (!name) return colors[0];
@@ -47,6 +46,7 @@ function Users() {
     const res = await api.get("/students");
     setStudents(res.data);
   };
+
   const fetchStaff = async () => {
     const res = await api.get("/staff");
     setStaff(res.data);
@@ -65,16 +65,21 @@ function Users() {
   }, []);
 
   // Filters
-  const displayStudents = students.filter(
-    (r) =>
-      r.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const displayStaff = staff.filter(
-    (r) =>
-      r.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const displayStudents = students
+    .filter(
+      (r) =>
+        r.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => (a.createdAt && b.createdAt ? new Date(a.createdAt) - new Date(b.createdAt) : a.id - b.id));
+
+  const displayStaff = staff
+    .filter(
+      (r) =>
+        r.fullname?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => (a.createdAt && b.createdAt ? new Date(a.createdAt) - new Date(b.createdAt) : a.id - b.id));
 
   // Handlers
   const handleEdit = (row) => {
@@ -91,12 +96,12 @@ function Users() {
     });
     setShowEditModal(true);
   };
+
   const handleDelete = (row) => {
     setSelectedRow(row);
     setShowDeleteModal(true);
   };
 
-  // Add
   const handleAdd = async () => {
     try {
       if (activeTab === "students") {
@@ -119,52 +124,48 @@ function Users() {
         });
         await fetchStaff();
       }
-      setShowAddModal(false);
       resetForm();
+      setShowAddModal(false);
     } catch (e) {
       console.error(e);
       alert("Add failed. See console.");
     }
   };
 
-  // Update
-const handleUpdate = async () => {
-  try {
-    // Update User info (including new email logic)
-    await api.put(`/user/update/${selectedRow.email}`, {
-      fullname: formData.fullname || "",
-      mobileNumber: formData.mobileNumber || "",
-      password: formData.password || "",
-      // 👇 Only send newEmail if LOCAL and changed
-      ...(selectedRow.authMethod === "LOCAL" &&
+  const handleUpdate = async () => {
+    try {
+      await api.put(`/user/update/${selectedRow.email}`, {
+        fullname: formData.fullname || "",
+        mobileNumber: formData.mobileNumber || "",
+        password: formData.password || "",
+        ...(selectedRow.authMethod === "LOCAL" &&
         formData.email &&
         formData.email !== selectedRow.email
-        ? { newEmail: formData.email }
-        : {}),
-    });
+          ? { newEmail: formData.email }
+          : {}),
+      });
 
-    if (activeTab === "students") {
-      await api.put(`/students/${selectedRow.id}`, {
-        studentDepartment: formData.studentDepartment,
-        studentIdNumber: formData.studentIdNumber,
-      });
-      await fetchStudents();
-    } else {
-      await api.put(`/staff/${selectedRow.id}`, {
-        staffId: formData.staffId,
-      });
-      await fetchStaff();
+      if (activeTab === "students") {
+        await api.put(`/students/${selectedRow.id}`, {
+          studentDepartment: formData.studentDepartment,
+          studentIdNumber: formData.studentIdNumber,
+        });
+        await fetchStudents();
+      } else {
+        await api.put(`/staff/${selectedRow.id}`, {
+          staffId: formData.staffId,
+        });
+        await fetchStaff();
+      }
+
+      resetForm();
+      setShowEditModal(false);
+    } catch (e) {
+      console.error(e);
+      alert("Update failed. See console.");
     }
-    setShowEditModal(false);
-    resetForm();
-  } catch (e) {
-    console.error(e);
-    alert("Update failed. See console.");
-  }
-};
+  };
 
-
-  // Delete
   const confirmDelete = async () => {
     try {
       if (activeTab === "students") {
@@ -193,23 +194,22 @@ const handleUpdate = async () => {
       authMethod: "LOCAL",
     });
 
-  // Avatar
+  // Avatar Renderer
   const renderAvatar = (user, isStudent) => {
-    // For staff: always show initials
-    if (!isStudent) {
-      return (
-        <div
-          className="user-avatar"
-          style={{
-            backgroundColor: getAvatarColor(user.fullname, user.authMethod),
-            color: user.authMethod === "GOOGLE" ? "#fff" : "#333",
-          }}
-        >
-          {getInitials(user.fullname)}
-        </div>
-      );
-    }
-    // For students: show image if available, otherwise initials
+    const initialsAvatar = (
+      <div
+        className="user-avatar"
+        style={{
+          backgroundColor: getAvatarColor(user.fullname, user.authMethod),
+          color: user.authMethod === "GOOGLE" ? "#fff" : "#333",
+        }}
+      >
+        {getInitials(user.fullname)}
+      </div>
+    );
+
+    if (!isStudent) return initialsAvatar;
+
     if (user.avatarUrl) {
       return (
         <>
@@ -222,37 +222,18 @@ const handleUpdate = async () => {
               e.target.nextElementSibling.style.display = "flex";
             }}
           />
-          <div
-            className="user-avatar"
-            style={{
-              display: "none",
-              backgroundColor: getAvatarColor(user.fullname, user.authMethod),
-              color: user.authMethod === "GOOGLE" ? "#fff" : "#333",
-            }}
-          >
-            {getInitials(user.fullname)}
-          </div>
+          <div style={{ display: "none" }}>{initialsAvatar}</div>
         </>
       );
     }
-    return (
-      <div
-        className="user-avatar"
-        style={{
-          backgroundColor: getAvatarColor(user.fullname, user.authMethod),
-          color: user.authMethod === "GOOGLE" ? "#fff" : "#333",
-        }}
-      >
-        {getInitials(user.fullname)}
-      </div>
-    );
+
+    return initialsAvatar;
   };
 
   // Toolbar
   const renderToolbar = () => (
     <div className="users-controls">
       <div className="search-box">
-        <span className="search-icon">🔍</span>
         <input
           type="text"
           placeholder="Search by name or email..."
@@ -272,11 +253,12 @@ const handleUpdate = async () => {
     </div>
   );
 
-  // Table
   const renderTable = (rows) => (
     <div className="users-table-container">
       {loading ? (
-        <p style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading...</p>
+        <p style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>
+          Loading...
+        </p>
       ) : rows.length === 0 ? (
         <p style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>
           No {activeTab} found
@@ -300,9 +282,7 @@ const handleUpdate = async () => {
                 <td>{i + 1}</td>
                 <td>
                   <div className="user-name-cell">
-                    <div className="avatar-wrapper">
-                      {renderAvatar(r, activeTab === "students")}
-                    </div>
+                    <div className="avatar-wrapper">{renderAvatar(r, activeTab === "students")}</div>
                     <span className="user-name">{r.fullname || "—"}</span>
                   </div>
                 </td>
@@ -316,14 +296,12 @@ const handleUpdate = async () => {
                         alignItems: "center",
                         background: "#ea4335",
                         color: "#fff",
-                        padding: "2px 7px 2px 4px",
+                        padding: "2px 6px",
                         borderRadius: "4px",
                         fontSize: "11px",
-                        fontWeight: 500,
-                        gap: "2px",
                       }}
                     >
-                      <span style={{ fontSize: "13px" }}>🔒</span> Google
+                      🔒 Google
                     </span>
                   )}
                 </td>
@@ -348,7 +326,6 @@ const handleUpdate = async () => {
     </div>
   );
 
-  // MODALS BELOW
   return (
     <div className="users-page">
       <div className="users-header">
@@ -376,37 +353,49 @@ const handleUpdate = async () => {
       {renderToolbar()}
       {activeTab === "students" ? renderTable(displayStudents) : renderTable(displayStaff)}
 
-      {/* ---------------- ADD MODAL ---------------- */}
+      {/* ADD MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
           <div className="modal">
             <h2>{activeTab === "students" ? "Add Student" : "Add Staff"}</h2>
-            <input type="text" placeholder="Full Name"
+            <input
+              type="text"
+              placeholder="Full Name"
               value={formData.fullname}
               onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
             />
-            <input type="email" placeholder="Email"
+            <input
+              type="email"
+              placeholder="Email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
-            <input type="text" placeholder="Mobile Number"
+            <input
+              type="text"
+              placeholder="Mobile Number"
               value={formData.mobileNumber}
               onChange={(e) => setFormData({ ...formData, mobileNumber: e.target.value })}
             />
-            <input type="password" placeholder="Password"
+            <input
+              type="password"
+              placeholder="Password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
 
             {activeTab === "students" ? (
               <>
-                <input type="text" placeholder="Department"
+                <input
+                  type="text"
+                  placeholder="Department"
                   value={formData.studentDepartment}
                   onChange={(e) =>
                     setFormData({ ...formData, studentDepartment: e.target.value })
                   }
                 />
-                <input type="text" placeholder="Student ID Number"
+                <input
+                  type="text"
+                  placeholder="Student ID Number"
                   value={formData.studentIdNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, studentIdNumber: e.target.value })
@@ -414,7 +403,9 @@ const handleUpdate = async () => {
                 />
               </>
             ) : (
-              <input type="text" placeholder="Staff ID"
+              <input
+                type="text"
+                placeholder="Staff ID"
                 value={formData.staffId}
                 onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
               />
@@ -428,13 +419,13 @@ const handleUpdate = async () => {
         </div>
       )}
 
-      {/* ---------------- EDIT MODAL ---------------- */}
+      {/* EDIT MODAL */}
       {showEditModal && (
         <div className="modal-overlay">
           <div className="modal">
             <h2>{activeTab === "students" ? "Edit Student" : "Edit Staff"}</h2>
-            {/* EMAIL FIELD - LOCAL = editable, GOOGLE = locked */}
-            <div style={{ position: 'relative', marginBottom: 10 }}>
+
+            <div style={{ marginBottom: 10 }}>
               <input
                 type="email"
                 placeholder="Email"
@@ -445,42 +436,7 @@ const handleUpdate = async () => {
                     setFormData({ ...formData, email: e.target.value });
                   }
                 }}
-                style={{
-                  background: selectedRow?.authMethod === "GOOGLE" ? "#f3f4f6" : "white",
-                  color: selectedRow?.authMethod === "GOOGLE" ? "#6b7280" : "#111",
-                  cursor: selectedRow?.authMethod === "GOOGLE" ? "not-allowed" : "text",
-                  fontWeight: selectedRow?.authMethod === "GOOGLE" ? 500 : 400
-                }}
               />
-              {selectedRow?.authMethod === "GOOGLE" && (
-                <span style={{
-                  fontSize: "12px",
-                  color: "#ea4335",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  marginTop: "4px",
-                  fontWeight: 600,
-                }}>
-                  <span>🔒</span> Google Account (email cannot be changed)
-                </span>
-              )}
-            </div>
-
-            {/* AUTH METHOD */}
-            <div style={{
-              marginBottom: "10px",
-              color: selectedRow?.authMethod === "GOOGLE" ? "#ea4335" : "#2563eb",
-              fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px"
-            }}>
-              {selectedRow?.authMethod === "GOOGLE" ? (
-                <span>🔒 Google User</span>
-              ) : (
-                <span>🛡️ Local User</span>
-              )}
             </div>
 
             <input
@@ -539,7 +495,7 @@ const handleUpdate = async () => {
         </div>
       )}
 
-      {/* ---------------- DELETE MODAL ---------------- */}
+      {/* DELETE MODAL */}
       {showDeleteModal && (
         <div className="modal-overlay">
           <div className="modal confirm">
