@@ -7,15 +7,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class StudentViewDTO {
+public class MaintenanceStaffViewDTO {
     private String id;
+    private String userId;
     private String fullname;
     private String email;
     private String mobileNumber;
-    private String studentDepartment;
-    private String studentIdNumber;
-    private String password;
-    private String avatarUrl;
+    private String staffId;
     private String authMethod;
     private LocalDateTime createdAt;  // ADD THIS LINE
 }
