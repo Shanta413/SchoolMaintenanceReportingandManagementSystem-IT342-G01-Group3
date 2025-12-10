@@ -66,6 +66,7 @@ function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
+      {/* Shield icon - stays blue */}
       <g transform="translate(0, 10)">
         <path
           d="M24 4L6 12V22C6 32 12 40 24 44C36 40 42 32 42 22V12L24 4Z"
@@ -89,7 +90,8 @@ function CitfixLogo({ className = '', size = 'md', variant = 'full' }) {
         />
       </g>
 
-      <g transform="translate(54, 10)">
+      {/* CITFIX text - add class for dark mode */}
+      <g transform="translate(54, 10)" className="citfix-text">
         <path
           d="M8 38.5C3.58172 38.5 0 34.9183 0 30.5V17.5C0 13.0817 3.58172 9.5 8 9.5H12V15.5H8C6.89543 15.5 6 16.3954 6 17.5V30.5C6 31.6046 6.89543 32.5 8 32.5H12V38.5H8Z"
           fill="#1E40AF"

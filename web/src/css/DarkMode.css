@@ -596,3 +596,8 @@ img, video, .no-transition {
   color: var(--text-tertiary) !important;
   border-color: var(--border-primary) !important;
 }
+
+.dark .citfix-text path,
+.dark .citfix-text rect {
+  fill: white !important;
+}
