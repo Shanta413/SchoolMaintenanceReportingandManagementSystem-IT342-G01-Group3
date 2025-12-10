@@ -1,55 +1,51 @@
-import React from "react";
-import { Edit2, Trash2 } from "lucide-react";
-import "../../css/components_css/BuildingCard.css";
-import PriorityBadges from "../PriorityBadges";
+import React from 'react';
+import { Edit, Trash2 } from 'lucide-react';
+import BuildingCard from '../BuildingCard';
+import '../../css/components_css/AdminBuildingCard.css';
 
-export default function AdminBuildingCard({ building, onClick, onEdit, onDelete }) {
-  const totalIssues =
-    (building.issueCount?.high || 0) +
-    (building.issueCount?.medium || 0) +
-    (building.issueCount?.low || 0);
+function AdminBuildingCard({ building, onClick, onEdit, onDelete }) {
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    onEdit();
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    onDelete();
+  };
+
+  // Transform building data to match BuildingCard props
+  const buildingData = {
+    id: building.id,
+    name: building.buildingName,
+    subtitle: building.buildingCode,
+    image: building.buildingImageUrl,
+    issues: building.issueCount || { high: 0, medium: 0, low: 0 },
+  };
 
   return (
-    <div className="building-card admin-version" onClick={onClick}>
-      {/* IMAGE */}
-      <div className="building-image-container">
-        <img
-          src={building.buildingImageUrl || "/placeholder-building.jpg"}
-          alt={building.buildingName}
-          className="building-image"
-        />
-      </div>
-
-      <div className="building-info">
-
-        {/* TOP ROW → Code + Edit/Delete buttons */}
-        <div className="card-top-row">
-          <h2 className="building-code">{building.buildingCode}</h2>
-
-          <div className="admin-inline-actions">
-            <button
-              className="admin-inline-btn edit"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            >
-              <Edit2 size={16} />
-            </button>
-
-            <button
-              className="admin-inline-btn delete"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* NAME BELOW */}
-        <p className="building-name">{building.buildingName}</p>
-
-        <PriorityBadges issues={building.issueCount || {}} />
-
-        <p className="total-issues">Total Issues: {totalIssues}</p>
+    <div className="admin-building-card-wrapper">
+      <BuildingCard building={buildingData} onClick={onClick} />
+      
+      {/* Action Buttons - Always visible on same row as building code */}
+      <div className="admin-card-actions">
+        <button 
+          className="admin-card-edit-btn" 
+          onClick={handleEdit}
+          title="Edit Building"
+        >
+          <Edit size={14} />
+        </button>
+        <button 
+          className="admin-card-delete-btn" 
+          onClick={handleDelete}
+          title="Delete Building"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
 }
+
+export default AdminBuildingCard;

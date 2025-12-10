@@ -16,7 +16,6 @@ function FilterDropdown({ value, onChange, options, placeholder = 'Sort By' }) {
           </option>
         ))}
       </select>
-      {value && <div className="filter-active-badge">!</div>}
     </div>
   );
 }

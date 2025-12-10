@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Calendar, Edit, Trash2, ClipboardCheck } from "lucide-react";
 
 import { getBuildingByCode } from "../../api/building";
 import { getIssuesByBuilding, updateIssue, deleteIssue } from "../../api/issues";
@@ -8,6 +7,7 @@ import { getIssuesByBuilding, updateIssue, deleteIssue } from "../../api/issues"
 import IssueResolutionModal from "../../components/staff/IssueResolutionModal";
 import IssueResolvedModal from "../../components/staff/IssueResolvedModal";
 import AdminReportIssueModal from "../../components/staff/AdminReportIssueModal";
+import DeleteConfirmationModal from "../../components/staff/DeleteConfirmationModal";
 
 import "../../css/BuildingDetails.css";
 
@@ -24,15 +24,18 @@ export default function AdminBuildingDetail() {
   const [activeTab, setActiveTab] = useState("active");
   const [selectedPriority, setSelectedPriority] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
 
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Modals
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [issueToDelete, setIssueToDelete] = useState(null);
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +84,6 @@ export default function AdminBuildingDetail() {
   const fetchIssues = useCallback(() => {
     if (!building?.id) return;
 
-    // Only show loading spinner on initial load
     if (isInitialLoad) {
       setIssuesLoading(true);
     }
@@ -132,10 +134,32 @@ export default function AdminBuildingDetail() {
   };
 
   // ================================
-  // FILTERING + COUNTS
+  // COUNTS & FILTERING
   // ================================
+  const activeIssuesCount = issues.filter((i) => !isResolved(i.issueStatus)).length;
+  const resolvedIssuesCount = issues.filter((i) => isResolved(i.issueStatus)).length;
+
+  // Priority counts - based on active tab
+  const highCount = issues.filter((i) => {
+    const isResolvedIssue = isResolved(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "HIGH" && matchesTab;
+  }).length;
+
+  const mediumCount = issues.filter((i) => {
+    const isResolvedIssue = isResolved(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "MEDIUM" && matchesTab;
+  }).length;
+
+  const lowCount = issues.filter((i) => {
+    const isResolvedIssue = isResolved(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "LOW" && matchesTab;
+  }).length;
+
   const filteredIssues = useMemo(() => {
-    return issues.filter((issue) => {
+    let filtered = issues.filter((issue) => {
       const isResolvedIssue = isResolved(issue.issueStatus);
       const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
       const matchesPriority =
@@ -147,28 +171,30 @@ export default function AdminBuildingDetail() {
 
       return matchesTab && matchesPriority && matchesSearch;
     });
-  }, [issues, activeTab, selectedPriority, searchQuery]);
 
-  const activeIssuesCount = issues.filter((i) => !isResolved(i.issueStatus)).length;
-  const resolvedIssuesCount = issues.filter((i) => isResolved(i.issueStatus)).length;
+    // Apply sorting
+    if (sortBy === "recent") {
+      filtered.sort(
+        (a, b) => new Date(b.issueCreatedAt) - new Date(a.issueCreatedAt)
+      );
+    } else if (sortBy === "oldest") {
+      filtered.sort(
+        (a, b) => new Date(a.issueCreatedAt) - new Date(b.issueCreatedAt)
+      );
+    } else if (sortBy === "priority") {
+      const order = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+      filtered.sort(
+        (a, b) => (order[b.issuePriority] || 0) - (order[a.issuePriority] || 0)
+      );
+    }
 
-  const highCount = issues.filter(
-    (i) => i.issuePriority === "HIGH" && !isResolved(i.issueStatus)
-  ).length;
-
-  const mediumCount = issues.filter(
-    (i) => i.issuePriority === "MEDIUM" && !isResolved(i.issueStatus)
-  ).length;
-
-  const lowCount = issues.filter(
-    (i) => i.issuePriority === "LOW" && !isResolved(i.issueStatus)
-  ).length;
+    return filtered;
+  }, [issues, activeTab, selectedPriority, searchQuery, sortBy]);
 
   // ================================
   // EDIT / DELETE / RESOLVE
   // ================================
   const handleEdit = (issue) => {
-    // Add buildingCode to the issue object
     setSelectedIssue({
       ...issue,
       buildingCode: building?.buildingCode
@@ -176,22 +202,28 @@ export default function AdminBuildingDetail() {
     setShowModal(true);
   };
 
-  const handleDelete = async (issueId) => {
-    if (!window.confirm("Are you sure you want to delete this issue?")) {
-      return;
-    }
+  const handleDeleteClick = (issue, e) => {
+    e.stopPropagation();
+    setIssueToDelete(issue);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!issueToDelete?.id) return;
 
     setIsDeleting(true);
-    console.log("🗑️ Deleting issue:", issueId);
+    console.log("🗑️ Deleting issue:", issueToDelete.id);
 
     try {
-      await deleteIssue(issueId);
-      setIssues((prev) => prev.filter((i) => i.id !== issueId));
+      await deleteIssue(issueToDelete.id);
+      setIssues((prev) => prev.filter((i) => i.id !== issueToDelete.id));
       console.log("✅ Issue deleted successfully");
       showToast("success", "Issue deleted successfully");
       
-      // Close modal if it's open
-      if (showModal && selectedIssue?.id === issueId) {
+      setShowDeleteModal(false);
+      setIssueToDelete(null);
+      
+      if (showModal && selectedIssue?.id === issueToDelete.id) {
         setShowModal(false);
         setSelectedIssue(null);
       }
@@ -220,12 +252,11 @@ export default function AdminBuildingDetail() {
     });
 
     try {
-      // 🟢 FIXED: Pass null for photoFile, resolutionFile as 4th param
       await updateIssue(
         selectedIssue.id,
         { ...selectedIssue, ...updateFields },
-        null,              // photoFile (not used here)
-        resolutionFile     // resolutionFile (this is what we want!)
+        null,
+        resolutionFile
       );
 
       console.log("✅ Issue updated successfully");
@@ -234,9 +265,7 @@ export default function AdminBuildingDetail() {
       setShowModal(false);
       setSelectedIssue(null);
 
-      // Mark as initial load to show loading on manual refresh
       setIsInitialLoad(true);
-      // Refresh issues list
       fetchIssues();
     } catch (error) {
       console.error("❌ Failed to update issue:", error);
@@ -258,7 +287,6 @@ export default function AdminBuildingDetail() {
   };
 
   const handleIssueCreated = () => {
-    // Mark as initial load to show loading on manual refresh
     setIsInitialLoad(true);
     fetchIssues();
     showToast("success", "Issue reported successfully");
@@ -282,8 +310,7 @@ export default function AdminBuildingDetail() {
           onClick={() => navigate("/staff/issues")}
           className="back-button-simple"
         >
-          <ArrowLeft size={18} />
-          Back to Issues
+          ← Back to Issues
         </button>
         <div className="error-text">{error}</div>
       </div>
@@ -328,7 +355,7 @@ export default function AdminBuildingDetail() {
               onClick={() => navigate("/staff/issues")}
               className="back-button-banner"
             >
-              <ArrowLeft size={20} />
+              ←
             </button>
 
             <div>
@@ -366,48 +393,66 @@ export default function AdminBuildingDetail() {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="search-container">
-          <Search size={20} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search issues by title or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
+        {/* Search + Sort Filters */}
+        <div className="filters-section">
+          <div className="filter-group">
+            <label>Search</label>
+            <div className="search-input-wrapper">
+              <span className="search-icon-inside">🔍</span>
+              <input
+                type="text"
+                placeholder="Search issues by title or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="filter-select search-with-icon"
+              />
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Sort</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="filter-select"
+            >
+              <option value="recent">Most Recent</option>
+              <option value="oldest">Oldest</option>
+              <option value="priority">Priority</option>
+            </select>
+          </div>
         </div>
 
         {/* Priority Chips */}
-        <div className="filter-chips-container">
+        <div className="priority-chips">
           <span className="filter-label">Filter by Priority:</span>
 
           <button
             onClick={() => setSelectedPriority("all")}
-            className={`filter-chip ${selectedPriority === "all" ? "active" : ""}`}
+            className={`chip ${selectedPriority === "all" ? "active" : ""}`}
           >
-            All <span className="chip-badge">{activeIssuesCount}</span>
+            All <span className="chip-count">{activeTab === "active" ? activeIssuesCount : resolvedIssuesCount}</span>
           </button>
 
           <button
             onClick={() => setSelectedPriority("high")}
-            className={`filter-chip high ${selectedPriority === "high" ? "active" : ""}`}
+            className={`chip chip-high ${selectedPriority === "high" ? "active" : ""}`}
           >
-            High <span className="chip-badge">{highCount}</span>
+            High <span className="chip-count">{highCount}</span>
           </button>
 
           <button
             onClick={() => setSelectedPriority("medium")}
-            className={`filter-chip medium ${selectedPriority === "medium" ? "active" : ""}`}
+            className={`chip chip-medium ${selectedPriority === "medium" ? "active" : ""}`}
           >
-            Medium <span className="chip-badge">{mediumCount}</span>
+            Medium <span className="chip-count">{mediumCount}</span>
           </button>
 
           <button
             onClick={() => setSelectedPriority("low")}
-            className={`filter-chip low ${selectedPriority === "low" ? "active" : ""}`}
+            className={`chip chip-low ${selectedPriority === "low" ? "active" : ""}`}
           >
-            Low <span className="chip-badge">{lowCount}</span>
+            Low <span className="chip-count">{lowCount}</span>
           </button>
         </div>
 
@@ -442,44 +487,44 @@ export default function AdminBuildingDetail() {
                           {issue.issuePriority}
                         </span>
 
-                        <span
+                                                <span
                           style={{
                             marginLeft: "auto",
                             display: "flex",
-                            gap: "12px",
+                            gap: "6px",
                           }}
                         >
-                          <Edit
-                            size={18}
-                            className="icon-action"
+                          {/* Edit Button - Same as AdminBuildingCard */}
+                          <button
+                            className="admin-issue-edit-btn"
                             title="Edit Issue"
-                            onClick={() => handleEdit(issue)}
-                            style={{ cursor: "pointer" }}
-                          />
-
-                          <ClipboardCheck
-                            size={18}
-                            className="icon-action"
-                            title="Resolve Issue"
-                            onClick={() => handleEdit(issue)}
-                            style={{ cursor: "pointer" }}
-                          />
-
-                          <Trash2
-                            size={18}
-                            className="icon-action"
-                            title="Delete Issue"
-                            onClick={() => handleDelete(issue.id)}
-                            style={{ 
-                              cursor: isDeleting ? "not-allowed" : "pointer", 
-                              color: "#dc2626",
-                              opacity: isDeleting ? 0.5 : 1
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(issue);
                             }}
-                          />
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          </button>
+
+                          {/* Delete Button - Same as AdminBuildingCard */}
+                          <button
+                            className="admin-issue-delete-btn"
+                            title="Delete Issue"
+                            onClick={(e) => handleDeleteClick(issue, e)}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                          </button>
                         </span>
                       </div>
 
-                      {/* Reporter */}
                       <div
                         className="issue-meta"
                         style={{ margin: "8px 0 0 0" }}
@@ -493,8 +538,7 @@ export default function AdminBuildingDetail() {
                             fontWeight: 500,
                           }}
                         >
-                          <User size={16} />
-                          Reported By:
+                          👤 Reported By:
                           <span
                             style={{
                               marginLeft: 3,
@@ -508,9 +552,8 @@ export default function AdminBuildingDetail() {
                       </div>
                     </div>
 
-                    {/* Right side date */}
                     <div className="issue-date">
-                      <Calendar size={14} />
+                      📅
                       <span>
                         {issue.issueCreatedAt
                           ? new Date(issue.issueCreatedAt).toLocaleDateString()
@@ -533,7 +576,10 @@ export default function AdminBuildingDetail() {
             issue={selectedIssue}
             onSave={handleModalSave}
             onClose={handleModalClose}
-            onDelete={() => handleDelete(selectedIssue.id)}
+            onDelete={() => {
+              setShowModal(false);
+              handleDeleteClick(selectedIssue, { stopPropagation: () => {} });
+            }}
             isEditing={true}
             isSaving={isSaving}
             isDeleting={isDeleting}
@@ -544,13 +590,28 @@ export default function AdminBuildingDetail() {
             issue={selectedIssue}
             onSave={handleModalSave}
             onClose={handleModalClose}
-            onDelete={() => handleDelete(selectedIssue.id)}
+            onDelete={() => {
+              setShowModal(false);
+              handleDeleteClick(selectedIssue, { stopPropagation: () => {} });
+            }}
             isEditing={true}
             isSaving={isSaving}
             isDeleting={isDeleting}
           />
         )
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setIssueToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        issueTitle={issueToDelete?.issueTitle}
+        isDeleting={isDeleting}
+      />
 
       {/* Admin Create Issue Modal */}
       {building && (

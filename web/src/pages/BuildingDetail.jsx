@@ -1,13 +1,13 @@
 // src/pages/BuildingDetail.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Calendar, Edit2, Trash2 } from "lucide-react";
 
 import { getBuildingByCode } from "../api/building";
 import { getIssuesByBuilding, deleteIssue } from "../api/issues";
 
 import Header from "../components/Header";
 import UserActiveIssueModal from "../components/UserActiveIssueModal";
+import DeleteConfirmationModal from "../components/staff/DeleteConfirmationModal";
 
 import "../css/BuildingDetails.css";
 import "../css/components_css/UserActiveIssueModal.css";
@@ -20,7 +20,6 @@ export default function BuildingDetail() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user")) || {};
   
-  // Add inactivity logout
   const { InactivityModal } = useInactivityLogout("STUDENT");
 
   const [building, setBuilding] = useState(null);
@@ -30,6 +29,7 @@ export default function BuildingDetail() {
   const [activeTab, setActiveTab] = useState("active");
   const [selectedPriority, setSelectedPriority] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -37,6 +37,8 @@ export default function BuildingDetail() {
 
   const [toast, setToast] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [issueToDelete, setIssueToDelete] = useState(null);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -117,21 +119,8 @@ export default function BuildingDetail() {
     ["RESOLVED", "FIXED"].includes((status || "").toUpperCase());
 
   // ================================
-  // FILTER & STATS
+  // COUNTS & STATS
   // ================================
-  const filteredIssues = issues.filter((issue) => {
-    const isActive = !isResolvedStatus(issue.issueStatus);
-    const matchesTab = activeTab === "active" ? isActive : !isActive;
-    const matchesPriority =
-      selectedPriority === "all" ||
-      issue.issuePriority?.toLowerCase() === selectedPriority;
-    const matchesSearch =
-      issue.issueTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.issueDescription?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesTab && matchesPriority && matchesSearch;
-  });
-
   const activeIssuesCount = issues.filter(
     (i) => !isResolvedStatus(i.issueStatus)
   ).length;
@@ -140,32 +129,81 @@ export default function BuildingDetail() {
     (i) => isResolvedStatus(i.issueStatus)
   ).length;
 
-  const highCount = issues.filter(
-    (i) => i.issuePriority === "HIGH" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  // Priority counts - based on active tab
+  const highCount = issues.filter((i) => {
+    const isResolvedIssue = isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "HIGH" && matchesTab;
+  }).length;
 
-  const mediumCount = issues.filter(
-    (i) => i.issuePriority === "MEDIUM" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  const mediumCount = issues.filter((i) => {
+    const isResolvedIssue = isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "MEDIUM" && matchesTab;
+  }).length;
 
-  const lowCount = issues.filter(
-    (i) => i.issuePriority === "LOW" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  const lowCount = issues.filter((i) => {
+    const isResolvedIssue = isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? !isResolvedIssue : isResolvedIssue;
+    return i.issuePriority === "LOW" && matchesTab;
+  }).length;
+
+  // ================================
+  // FILTER & SORT
+  // ================================
+  const filteredIssues = useMemo(() => {
+    let filtered = issues.filter((issue) => {
+      const isActive = !isResolvedStatus(issue.issueStatus);
+      const matchesTab = activeTab === "active" ? isActive : !isActive;
+      const matchesPriority =
+        selectedPriority === "all" ||
+        issue.issuePriority?.toLowerCase() === selectedPriority;
+      const matchesSearch =
+        issue.issueTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        issue.issueDescription?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesTab && matchesPriority && matchesSearch;
+    });
+
+    // Apply sorting
+    if (sortBy === "recent") {
+      filtered.sort(
+        (a, b) => new Date(b.issueCreatedAt) - new Date(a.issueCreatedAt)
+      );
+    } else if (sortBy === "oldest") {
+      filtered.sort(
+        (a, b) => new Date(a.issueCreatedAt) - new Date(b.issueCreatedAt)
+      );
+    } else if (sortBy === "priority") {
+      const order = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+      filtered.sort(
+        (a, b) => (order[b.issuePriority] || 0) - (order[a.issuePriority] || 0)
+      );
+    }
+
+    return filtered;
+  }, [issues, activeTab, selectedPriority, searchQuery, sortBy]);
 
   // ================================
   // DELETE HANDLER
   // ================================
-  const handleDelete = async (issueId, e) => {
+  const handleDeleteClick = (issue, e) => {
     e.stopPropagation();
+    setIssueToDelete(issue);
+    setShowDeleteModal(true);
+  };
 
-    if (!window.confirm("Are you sure you want to delete this issue?")) return;
+  const handleDeleteConfirm = async () => {
+    if (!issueToDelete?.id) return;
 
     setIsDeleting(true);
 
     try {
-      await deleteIssue(issueId);
-      setIssues((prev) => prev.filter((i) => i.id !== issueId));
+      await deleteIssue(issueToDelete.id);
+      setIssues((prev) => prev.filter((i) => i.id !== issueToDelete.id));
       showToast("success", "Issue deleted successfully");
+      setShowDeleteModal(false);
+      setIssueToDelete(null);
     } catch (error) {
       const errorMsg =
         error?.response?.data?.message ||
@@ -182,7 +220,8 @@ export default function BuildingDetail() {
   if (loading) {
     return (
       <div className="loading-container">
-        <div className="loading-text">Loading building...</div>
+        <div className="loading-spinner"></div>
+        <p>Loading building...</p>
       </div>
     );
   }
@@ -191,8 +230,7 @@ export default function BuildingDetail() {
     return (
       <div className="error-container">
         <button onClick={() => navigate("/buildings")} className="back-button-simple">
-          <ArrowLeft size={18} />
-          Back to Buildings
+          ← Back to Buildings
         </button>
         <div className="error-text">{error}</div>
       </div>
@@ -232,14 +270,14 @@ export default function BuildingDetail() {
         </div>
       )}
 
-      <Header userName="Student" />
+      <Header userName={user.username || "Student"} />
 
       {/* HEADER BANNER */}
       <div className="building-header-banner">
         <div className="building-header-content">
           <div className="building-header-left">
             <button onClick={() => navigate("/buildings")} className="back-button-banner">
-              <ArrowLeft size={20} />
+              ←
             </button>
             <div>
               <h1 className="building-title">{building?.buildingName}</h1>
@@ -260,213 +298,234 @@ export default function BuildingDetail() {
         </div>
       </div>
 
-      <main className="main-content">
-        {/* TABS */}
-        <div className="tabs-container">
-          <button
-            onClick={() => setActiveTab("active")}
-            className={`tab-button ${activeTab === "active" ? "active" : ""}`}
-          >
-            Active Issues <span className="tab-badge">{activeIssuesCount}</span>
-          </button>
+      <main className="reports-main">
+        <div className="building-detail-container">
+          {/* TABS */}
+          <div className="tabs-container">
+            <button
+              onClick={() => setActiveTab("active")}
+              className={`tab-btn ${activeTab === "active" ? "active" : ""}`}
+            >
+              Active Issues <span className="tab-badge">{activeIssuesCount}</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`tab-button ${activeTab === "history" ? "active" : ""}`}
-          >
-            Issue History{" "}
-            <span className="tab-badge">{resolvedIssuesCount}</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+            >
+              Fixed Issues{" "}
+              <span className="tab-badge">{resolvedIssuesCount}</span>
+            </button>
+          </div>
 
-        {/* SEARCH BAR */}
-        <div className="search-container">
-          <Search size={20} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search issues by title or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-        </div>
+          {/* Search + Sort Filters - 2 Column */}
+          <div className="filters-section">
+            <div className="filter-group">
+              <label>Search</label>
+              <div className="search-input-wrapper">
+                <span className="search-icon-inside">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search issues by title or description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="filter-select search-with-icon"
+                />
+              </div>
+            </div>
 
-        {/* FILTERS */}
-        <div className="filter-chips-container">
-          <span className="filter-label">Filter by Priority:</span>
+            <div className="filter-group">
+              <label>Sort</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="filter-select"
+              >
+                <option value="recent">Most Recent</option>
+                <option value="oldest">Oldest</option>
+                <option value="priority">Priority</option>
+              </select>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setSelectedPriority("all")}
-            className={`filter-chip ${selectedPriority === "all" ? "active" : ""}`}
-          >
-            All <span className="chip-badge">{activeIssuesCount}</span>
-          </button>
+          {/* Priority Chips */}
+          <div className="priority-chips">
+            <span className="filter-label">Filter by Priority:</span>
 
-          <button
-            onClick={() => setSelectedPriority("high")}
-            className={`filter-chip high ${selectedPriority === "high" ? "active" : ""}`}
-          >
-            High <span className="chip-badge">{highCount}</span>
-          </button>
+            <button
+              onClick={() => setSelectedPriority("all")}
+              className={`chip ${selectedPriority === "all" ? "active" : ""}`}
+            >
+              All <span className="chip-count">{activeTab === "active" ? activeIssuesCount : resolvedIssuesCount}</span>
+            </button>
 
-          <button
-            onClick={() => setSelectedPriority("medium")}
-            className={`filter-chip medium ${selectedPriority === "medium" ? "active" : ""}`}
-          >
-            Medium <span className="chip-badge">{mediumCount}</span>
-          </button>
+            <button
+              onClick={() => setSelectedPriority("high")}
+              className={`chip chip-high ${selectedPriority === "high" ? "active" : ""}`}
+            >
+              High <span className="chip-count">{highCount}</span>
+            </button>
 
-          <button
-            onClick={() => setSelectedPriority("low")}
-            className={`filter-chip low ${selectedPriority === "low" ? "active" : ""}`}
-          >
-            Low <span className="chip-badge">{lowCount}</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setSelectedPriority("medium")}
+              className={`chip chip-medium ${selectedPriority === "medium" ? "active" : ""}`}
+            >
+              Medium <span className="chip-count">{mediumCount}</span>
+            </button>
 
-        {/* ISSUES LIST */}
-        <div className="issues-list">
-          {issuesLoading ? (
-            <div className="loading-issues">Loading issues...</div>
-          ) : filteredIssues.length === 0 ? (
-            <div className="no-issues">No issues found.</div>
-          ) : (
-            filteredIssues.map((issue) => {
-              const colors = getPriorityColor(issue.issuePriority);
+            <button
+              onClick={() => setSelectedPriority("low")}
+              className={`chip chip-low ${selectedPriority === "low" ? "active" : ""}`}
+            >
+              Low <span className="chip-count">{lowCount}</span>
+            </button>
+          </div>
 
-              const isReporter =
-                user.id &&
-                (
-                  issue.reportedById === user.id ||
-                  issue.userId === user.id ||
-                  issue.reportedBy === user.id ||
-                  String(issue.reportedById) === String(user.id) ||
-                  String(issue.userId) === String(user.id) ||
-                  issue.reportedByEmail === user.email ||
-                  issue.email === user.email ||
-                  (user.username && issue.reportedByName === user.username)
-                );
+          {/* ISSUES LIST */}
+          <div className="issues-list">
+            {issuesLoading ? (
+              <div className="loading-issues">Loading issues...</div>
+            ) : filteredIssues.length === 0 ? (
+              <div className="no-results">
+                <p>No issues found</p>
+              </div>
+            ) : (
+              filteredIssues.map((issue) => {
+                const colors = getPriorityColor(issue.issuePriority);
 
-              return (
-                <div
-                  key={issue.id}
-                  className="issue-card"
-                  style={{ borderLeftColor: colors.border }}
-                  onClick={() => setModalIssue(issue)}
-                >
+                const isReporter =
+                  user.id &&
+                  (
+                    issue.reportedById === user.id ||
+                    issue.userId === user.id ||
+                    issue.reportedBy === user.id ||
+                    String(issue.reportedById) === String(user.id) ||
+                    String(issue.userId) === String(user.id) ||
+                    issue.reportedByEmail === user.email ||
+                    issue.email === user.email ||
+                    (user.username && issue.reportedByName === user.username)
+                  );
+
+                return (
                   <div
-                    className="issue-card-content"
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: "16px",
-                      padding: "16px"
-                    }}
+                    key={issue.id}
+                    className="issue-card"
+                    style={{ borderLeftColor: colors.border }}
+                    onClick={() => setModalIssue(issue)}
                   >
-                    <div className="issue-main">
-                      <div className="issue-header">
-                        <h3 className="issue-title">{issue.issueTitle}</h3>
-                        <span
-                          className="priority-badge"
-                          style={{
-                            background: colors.bg,
-                            color: colors.text,
-                          }}
-                        >
-                          {issue.issuePriority}
-                        </span>
-                      </div>
-
-                      <div className="issue-meta">
-                    <User size={16} />
-                    <span>Reported by: </span>
-                    <span style={{ fontWeight: 600 }}>
-                      {issue.reportedByName || "Unknown"}
-                    </span>
-                  </div>
-                    </div>
-
-                    {/* Right side */}
-                    <div className="issue-right">
-                      <div className="issue-date">
-                        <Calendar size={14} />
-                        {issue.issueCreatedAt &&
-                          new Date(issue.issueCreatedAt).toLocaleDateString()}
-                      </div>
-
-                      {isReporter && !isResolvedStatus(issue.issueStatus) && (
-                        <div className="issue-actions">
-                          <button
-                            className="admin-inline-btn edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate("/buildings/ReportIssue", {
-                                state: {
-                                  ...issue,
-                                  edit: true,
-                                  buildingCode: building.buildingCode,
-                                }
-                              });
+                    <div className="issue-card-content">
+                      <div className="issue-main">
+                        <div className="issue-header">
+                          <h3 className="issue-title">{issue.issueTitle}</h3>
+                          <span
+                            className="priority-badge"
+                            style={{
+                              background: colors.bg,
+                              color: colors.text,
                             }}
-                            title="Edit Issue"
                           >
-                            <Edit2 size={16} />
-                          </button>
-
-                          <button
-                            className="admin-inline-btn delete"
-                            onClick={(e) => handleDelete(issue.id, e)}
-                            disabled={isDeleting}
-                            title="Delete Issue"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                            {issue.issuePriority}
+                          </span>
                         </div>
-                      )}
+
+                        <div className="issue-meta">
+                          👤
+                          <span>Reported by:</span>
+                          <span style={{ fontWeight: 600 }}>
+                            {issue.reportedByName || "Unknown"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right side */}
+                      <div className="issue-right">
+                        <div className="issue-date">
+                          📅
+                          <span>
+                            {issue.issueCreatedAt &&
+                              new Date(issue.issueCreatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {isReporter && !isResolvedStatus(issue.issueStatus) && (
+                          <div className="issue-actions">
+                            <button
+                              className="admin-inline-btn edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate("/buildings/ReportIssue", {
+                                  state: {
+                                    ...issue,
+                                    edit: true,
+                                    buildingCode: building.buildingCode,
+                                  }
+                                });
+                              }}
+                              title="Edit Issue"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                              </svg>
+                            </button>
+
+                            <button
+                              className="admin-inline-btn delete"
+                              onClick={(e) => handleDeleteClick(issue, e)}
+                              title="Delete Issue"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
-
-        {/* MODAL */}
-        {modalIssue && (
-          <UserActiveIssueModal
-            issue={modalIssue}
-            currentUserId={user.id}
-            onClose={() => setModalIssue(null)}
-            onEdit={() => {
-              setModalIssue(null);
-              navigate("/buildings/ReportIssue", {
-                state: {
-                  ...modalIssue,
-                  edit: true,
-                  buildingCode: building.buildingCode,
-                },
-              });
-            }}
-          />
-        )}
       </main>
 
-      {/* Inactivity Modal - Add this at the end */}
-      {InactivityModal}
+      {/* MODAL */}
+      {modalIssue && (
+        <UserActiveIssueModal
+          issue={modalIssue}
+          currentUserId={user.id}
+          onClose={() => setModalIssue(null)}
+          onEdit={() => {
+            setModalIssue(null);
+            navigate("/buildings/ReportIssue", {
+              state: {
+                ...modalIssue,
+                edit: true,
+                buildingCode: building.buildingCode,
+              },
+            });
+          }}
+        />
+      )}
 
-      <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setIssueToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        issueTitle={issueToDelete?.issueTitle}
+        isDeleting={isDeleting}
+      />
+
+      {/* Inactivity Modal */}
+      {InactivityModal}
     </div>
   );
 }

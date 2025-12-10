@@ -9,13 +9,12 @@ import { getAllIssues, deleteIssue } from "../api/issues";
 
 import "../css/MyReports.css";
 import useAutoRefresh from "../hooks/useAutoRefresh";
-import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
+import useInactivityLogout from "../hooks/useInactivityLogout";
 
 export default function MyReports() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user")) || {};
   
-  // ← ADD THIS
   const { InactivityModal } = useInactivityLogout("STUDENT");
 
   const [activeTab, setActiveTab] = useState("active");
@@ -85,18 +84,24 @@ export default function MyReports() {
     isResolvedStatus(i.issueStatus)
   ).length;
 
-  // Priority counts
-  const highCount = allIssues.filter(
-    (i) => i.issuePriority === "HIGH" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  // Priority counts - based on active tab
+  const highCount = allIssues.filter((i) => {
+    const isActive = !isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? isActive : !isActive;
+    return i.issuePriority === "HIGH" && matchesTab;
+  }).length;
 
-  const mediumCount = allIssues.filter(
-    (i) => i.issuePriority === "MEDIUM" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  const mediumCount = allIssues.filter((i) => {
+    const isActive = !isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? isActive : !isActive;
+    return i.issuePriority === "MEDIUM" && matchesTab;
+  }).length;
 
-  const lowCount = allIssues.filter(
-    (i) => i.issuePriority === "LOW" && !isResolvedStatus(i.issueStatus)
-  ).length;
+  const lowCount = allIssues.filter((i) => {
+    const isActive = !isResolvedStatus(i.issueStatus);
+    const matchesTab = activeTab === "active" ? isActive : !isActive;
+    return i.issuePriority === "LOW" && matchesTab;
+  }).length;
 
   // Unique buildings
   const uniqueBuildings = useMemo(() => {
@@ -291,7 +296,7 @@ export default function MyReports() {
               onClick={() => setSelectedPriority("all")}
               className={`chip ${selectedPriority === "all" ? "active" : ""}`}
             >
-              All <span className="chip-count">{activeIssuesCount}</span>
+              All <span className="chip-count">{activeTab === "active" ? activeIssuesCount : fixedIssuesCount}</span>
             </button>
 
             <button
@@ -438,7 +443,7 @@ export default function MyReports() {
         </div>
       </main>
 
-      {/* Inactivity Modal - ADD THIS */}
+      {/* Inactivity Modal */}
       {InactivityModal}
     </div>
   );
