@@ -16,7 +16,9 @@ import AdminBuildingDetail from "./pages/staff/AdminBuildingDetail";
 import BuildingDetail from "./pages/BuildingDetail";
 import ReportIssue from "./pages/ReportIssue";
 
+// CSS IMPORTS
 import "./App.css";
+import "./css/DarkMode.css";  // ← ADD THIS LINE
 
 /**
  * ProtectedRoute - Generic authentication check

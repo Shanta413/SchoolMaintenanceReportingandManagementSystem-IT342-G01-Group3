@@ -8,6 +8,25 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
   const navigate = useNavigate();
   const timer = useRef(null);
   const [showModal, setShowModal] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Check dark mode on mount and listen for changes
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+
+    checkDarkMode();
+
+    // Listen for dark mode changes
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   // Check on mount if modal was showing before refresh
   useEffect(() => {
@@ -102,7 +121,7 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
     navigate("/login", { replace: true });
   };
 
-  // Modal component
+  // Modal component with dark mode support
   const InactivityModal = showModal ? (
     <div
       style={{
@@ -111,7 +130,7 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backgroundColor: isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(0, 0, 0, 0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -122,13 +141,16 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
     >
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: isDarkMode ? "#1e293b" : "white",
           padding: "40px",
           borderRadius: "12px",
           maxWidth: "420px",
           textAlign: "center",
-          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.2)",
-          pointerEvents: "auto"
+          boxShadow: isDarkMode 
+            ? "0 10px 25px rgba(0, 0, 0, 0.5)" 
+            : "0 10px 25px rgba(0, 0, 0, 0.2)",
+          pointerEvents: "auto",
+          border: isDarkMode ? "1px solid #334155" : "none"
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -138,7 +160,7 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
             height: "60px",
             margin: "0 auto 20px",
             borderRadius: "50%",
-            backgroundColor: "#fee",
+            backgroundColor: isDarkMode ? "#3b1f1f" : "#fee",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -151,7 +173,7 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
         <h2
           style={{
             marginBottom: "15px",
-            color: "#333",
+            color: isDarkMode ? "#f1f5f9" : "#333",
             fontSize: "24px",
             fontWeight: "600"
           }}
@@ -162,7 +184,7 @@ export default function useInactivityLogout(onlyForRole = "STUDENT") {
         <p
           style={{
             marginBottom: "30px",
-            color: "#666",
+            color: isDarkMode ? "#94a3b8" : "#666",
             fontSize: "16px",
             lineHeight: "1.5"
           }}

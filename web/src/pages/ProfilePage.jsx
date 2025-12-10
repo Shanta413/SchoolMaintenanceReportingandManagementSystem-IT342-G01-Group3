@@ -1,28 +1,20 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import {
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  User,
-  ArrowLeft,
-  Upload,
-  Info,
-} from "lucide-react";
+import { ArrowLeft, Upload, Info } from "lucide-react";
 import "../css/ProfilePage.css";
 import { useNavigate } from "react-router-dom";
-import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
+import useInactivityLogout from "../hooks/useInactivityLogout";
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  "https://backend-production-4aa1.up.railway.app/api";
+const API_BASE = "https://backend-production-4aa1.up.railway.app/api";
+
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   
-  // ← ADD THIS
   const { InactivityModal } = useInactivityLogout("STUDENT");
+
+  // ====== Edit Mode State ======
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // ====== State hooks ======
   const [formData, setFormData] = useState({
@@ -42,7 +34,6 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [avatarBust, setAvatarBust] = useState(Date.now());
 
   // ====== Toast notification state & function ======
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
@@ -90,15 +81,12 @@ const ProfilePage = () => {
         };
         setFormData(payload);
 
-        // keep a snapshot of text fields only (to detect changes later)
         setInitialTextSnapshot({
           fullname: payload.fullname,
           mobileNumber: payload.mobileNumber,
           studentDepartment: payload.studentDepartment,
           studentIdNumber: payload.studentIdNumber,
         });
-
-        setAvatarBust(Date.now());
       })
       .catch((err) => {
         console.error("Error fetching profile:", err);
@@ -111,12 +99,10 @@ const ProfilePage = () => {
 
   // ====== Detect if any non-avatar field changed ======
   const hasChanges = useMemo(() => {
-    if (!initialTextSnapshot) return false;
+    if (!initialTextSnapshot || !isEditMode) return false;
     
-    // Check if avatar file is selected
     if (selectedFile) return true;
     
-    // Check text fields
     return (
       formData.fullname !== initialTextSnapshot.fullname ||
       formData.mobileNumber !== initialTextSnapshot.mobileNumber ||
@@ -124,43 +110,30 @@ const ProfilePage = () => {
       formData.studentIdNumber !== initialTextSnapshot.studentIdNumber ||
       (formData.password && formData.password.trim().length > 0)
     );
-  }, [formData, initialTextSnapshot, selectedFile]);
+  }, [formData, initialTextSnapshot, selectedFile, isEditMode]);
 
   // ====== Controlled inputs with validation ======
   const handleChange = (e) => {
+    if (!isEditMode) return;
+    
     const { name, value } = e.target;
     
-    // Full name - limit to 60 characters
-    if (name === "fullname" && value.length > 60) {
-      return;
-    }
-    
-    // Phone number - only numbers, max 11
+    if (name === "fullname" && value.length > 60) return;
     if (name === "mobileNumber") {
       if (!/^\d*$/.test(value)) return;
       if (value.length > 11) return;
     }
-    
-    // Student ID - only numbers and dashes, max 11
     if (name === "studentIdNumber") {
       if (!/^[\d-]*$/.test(value)) return;
       if (value.length > 11) return;
     }
-    
-    // Department - max 10 characters
-    if (name === "studentDepartment" && value.length > 10) {
-      return;
-    }
-    
-    // Password - max 30 characters
-    if (name === "password" && value.length > 30) {
-      return;
-    }
+    if (name === "studentDepartment" && value.length > 10) return;
+    if (name === "password" && value.length > 30) return;
     
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ====== Handle avatar selection (enabled for LOCAL and GOOGLE) ======
+  // ====== Handle avatar selection ======
   const handleAvatarPick = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -176,7 +149,23 @@ const ProfilePage = () => {
     setSelectedFile(file);
   };
 
-  // ====== Save profile updates (text + optional avatar) ======
+  // ====== Toggle Edit Mode ======
+  const handleEditToggle = () => {
+    if (isEditMode) {
+      setFormData((prev) => ({
+        ...prev,
+        fullname: initialTextSnapshot.fullname,
+        mobileNumber: initialTextSnapshot.mobileNumber,
+        studentDepartment: initialTextSnapshot.studentDepartment,
+        studentIdNumber: initialTextSnapshot.studentIdNumber,
+        password: "",
+      }));
+      setSelectedFile(null);
+    }
+    setIsEditMode(!isEditMode);
+  };
+
+  // ====== Save profile updates ======
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -189,7 +178,6 @@ const ProfilePage = () => {
     }
 
     try {
-      // 1) If a new avatar is picked, upload it first
       if (selectedFile) {
         const fd = new FormData();
         fd.append("file", selectedFile);
@@ -198,7 +186,6 @@ const ProfilePage = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // IMPORTANT: re-fetch the fresh profile so state has the new Supabase URL
         const refreshed = await axios.get(`${API_BASE}/user/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -215,7 +202,6 @@ const ProfilePage = () => {
         setSelectedFile(null);
       }
 
-      // 2) Send ONLY text updates (do NOT include avatarUrl)
       const {
         password,
         fullname,
@@ -242,7 +228,6 @@ const ProfilePage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Update snapshot after successful save
       setInitialTextSnapshot({
         fullname,
         mobileNumber,
@@ -252,6 +237,7 @@ const ProfilePage = () => {
 
       showToast("Profile updated successfully!", "success");
       setFormData((prev) => ({ ...prev, password: "" }));
+      setIsEditMode(false);
     } catch (err) {
       console.error("Failed to update profile:", err);
       showToast("Error updating profile. Try again later.", "error");
@@ -266,12 +252,12 @@ const ProfilePage = () => {
 
   return (
     <div className="profile-page">
-      {/* ===== Toast Notification ===== */}
+      {/* Toast Notification */}
       {toast.show && (
         <div className={`toast ${toast.type}`}>{toast.message}</div>
       )}
 
-      {/* ===== Header Section ===== */}
+      {/* Header Section */}
       <div
         className="profile-header"
         style={{ backgroundImage: `url(/loginpic.jpg)` }}
@@ -315,16 +301,18 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {/* Upload Button */}
-            <label className="upload-avatar-btn">
-              <Upload size={16} />
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleAvatarPick}
-              />
-            </label>
+            {/* Upload Button - Only in Edit Mode */}
+            {isEditMode && (
+              <label className="upload-avatar-btn">
+                <Upload size={16} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleAvatarPick}
+                />
+              </label>
+            )}
 
             {uploading && <div className="uploading-hint">Uploading photo…</div>}
           </div>
@@ -335,70 +323,73 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* ===== Profile Info Section ===== */}
+      {/* Profile Info Section */}
       <div className="profile-body">
         <div className="profile-card">
-          <h3>Profile Information</h3>
-          <p className="subtitle">View and manage your personal information</p>
+          <div className="card-header">
+            <div>
+              <h3>Profile Information</h3>
+              <p className="subtitle">View and manage your personal information</p>
+            </div>
+            {!isEditMode && (
+              <button className="edit-profile-btn" onClick={handleEditToggle}>
+                Edit Profile
+              </button>
+            )}
+          </div>
 
           <form className="profile-form" onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <label>Full Name</label>
-                <div className="icon-input">
-                  <User size={16} />
-                  <input
-                    type="text"
-                    name="fullname"
-                    value={formData.fullname}
-                    onChange={handleChange}
-                    required
-                    maxLength={60}
-                  />
-                </div>
+                <label>FULL NAME</label>
+                <input
+                  type="text"
+                  name="fullname"
+                  value={formData.fullname}
+                  onChange={handleChange}
+                  required
+                  maxLength={60}
+                  disabled={!isEditMode}
+                />
               </div>
 
               <div className="form-group">
                 <label className="label-with-info">
-                  Email Address
+                  EMAIL ADDRESS
                   <div className="info-icon-wrapper">
                     <Info size={16} className="info-icon" />
                     <div className="info-tooltip">
-                      To change your email, please contact the administrator at{" "}
-                      <strong>jaysoncan413@gmail.com</strong>. Email changes require verification for security purposes.
+                      To change your email, contact the administrator at{" "}
+                      <strong>jaysoncan413@gmail.com</strong>. Email changes require verification for security.
                     </div>
                   </div>
                 </label>
-                <div className="icon-input">
-                  <Mail size={16} />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    readOnly
-                  />
-                </div>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  readOnly
+                  className="readonly-input"
+                />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>Phone Number</label>
-                <div className="icon-input">
-                  <Phone size={16} />
-                  <input
-                    type="text"
-                    name="mobileNumber"
-                    value={formData.mobileNumber}
-                    onChange={handleChange}
-                    placeholder="e.g., 09123456789 (11 digits)"
-                    maxLength={11}
-                  />
-                </div>
+                <label>PHONE NUMBER</label>
+                <input
+                  type="text"
+                  name="mobileNumber"
+                  value={formData.mobileNumber}
+                  onChange={handleChange}
+                  placeholder="e.g., 09123456789"
+                  maxLength={11}
+                  disabled={!isEditMode}
+                />
               </div>
 
               <div className="form-group">
-                <label>Student ID</label>
+                <label>STUDENT ID</label>
                 <input
                   type="text"
                   name="studentIdNumber"
@@ -406,74 +397,83 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   placeholder="e.g., 23-4231-312"
                   maxLength={11}
+                  disabled={!isEditMode}
                 />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label>Department</label>
-                <div className="icon-input">
-                  <MapPin size={16} />
-                  <input
-                    type="text"
-                    name="studentDepartment"
-                    value={formData.studentDepartment}
-                    onChange={handleChange}
-                    placeholder="e.g., CCS, CEA, CASE, CNAS, CCI"
-                    maxLength={10}
-                  />
-                </div>
+                <label>DEPARTMENT</label>
+                <input
+                  type="text"
+                  name="studentDepartment"
+                  value={formData.studentDepartment}
+                  onChange={handleChange}
+                  placeholder="e.g., CCS, CEA"
+                  maxLength={10}
+                  disabled={!isEditMode}
+                />
               </div>
 
               <div className="form-group">
-                <label>Member Since</label>
-                <div className="icon-input">
-                  <Calendar size={16} />
-                  <input
-                    type="text"
-                    name="createdAt"
-                    value={formData.createdAt}
-                    readOnly
-                  />
-                </div>
+                <label>MEMBER SINCE</label>
+                <input
+                  type="text"
+                  name="createdAt"
+                  value={formData.createdAt}
+                  readOnly
+                  className="readonly-input"
+                />
               </div>
             </div>
 
-            {/* Password change — disabled for Google users */}
+            {/* Password Field - Full Width */}
             <div className="form-group full-width">
-              <label>New Password</label>
+              <label>
+                NEW PASSWORD
+                {formData.authMethod === "GOOGLE" && (
+                  <span className="google-warning">
+                    This is a Google account - password changes are managed through Google settings
+                  </span>
+                )}
+              </label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter new password"
+                placeholder={formData.authMethod === "GOOGLE" ? "Managed by Google" : "Enter new password"}
                 maxLength={30}
-                disabled={formData.authMethod === "GOOGLE"}
-                style={formData.authMethod === "GOOGLE" ? { background: "#f3f4f6", cursor: "not-allowed" } : {}}
+                disabled={!isEditMode || formData.authMethod === "GOOGLE"}
+                className={formData.authMethod === "GOOGLE" ? "google-disabled" : ""}
               />
-              {formData.authMethod === "GOOGLE" && (
-                <small className="hint">
-                  Password changes are <b>disabled</b> for Google accounts.
-                </small>
-              )}
             </div>
 
-            <div className="form-actions">
-              <button
-                type="submit"
-                className={`save-btn ${hasChanges ? 'has-changes' : ''}`}
-                disabled={saving || uploading || !hasChanges}
-              >
-                {saving || uploading ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
+            {isEditMode && (
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={handleEditToggle}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`save-btn ${hasChanges ? 'has-changes' : ''}`}
+                  disabled={saving || uploading || !hasChanges}
+                >
+                  {saving || uploading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            )}
           </form>
         </div>
       </div>
 
-      {/* Inactivity Modal - ADD THIS */}
+      {/* Inactivity Modal */}
       {InactivityModal}
     </div>
   );
