@@ -16,3 +16,7 @@ export async function getIssuesByBuilding() {
   const { data } = await api.get('/admin/stats/issues-by-building');
   return data;
 }
+export async function getMonthlyIssues() {
+  const { data } = await api.get('/admin/stats/monthly-issues');
+  return data;
+}

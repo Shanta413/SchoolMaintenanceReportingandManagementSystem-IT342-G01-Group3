@@ -34,7 +34,7 @@ export default function DeleteConfirmationModal({
             className="delete-modal-cancel" 
             onClick={onClose}
             disabled={isDeleting}
-          >
+          >w
             Cancel
           </button>
           <button 

@@ -4,16 +4,210 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { createIssue, updateIssue } from "../api/issues";
 import { getAllBuildings } from "../api/building";
 import Header from "../components/Header";
-import { Upload, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle, Info } from "lucide-react";
 import "../css/AuthPage.css";
 import "../css/ReportIssue.css";
-import useInactivityLogout from "../hooks/useInactivityLogout"; // ← ADD THIS
+import useInactivityLogout from "../hooks/useInactivityLogout";
+
+// Help Modal Component
+const IssueTitleHelpModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  const goodTitleExamples = [
+    "Broken Air Conditioner",
+    "Door Handle Loose",
+    "Lights Not Working",
+    "Projector Not Turning On",
+    "Leaking Sink",
+    "Window Glass Cracked"
+  ];
+
+  return (
+    <div className="help-modal-overlay" onClick={onClose}>
+      <div className="help-modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="help-modal-close" onClick={onClose}>×</button>
+        
+        <div className="help-modal-header">
+          <div className="help-modal-icon">
+            <Info size={32} />
+          </div>
+          <h2>How to Write the Issue Title</h2>
+          <p className="help-modal-subtitle">
+            The Issue Title should be a short, clear description of what is wrong.
+          </p>
+        </div>
+
+        <div className="help-modal-body">
+          <div className="help-section">
+            <div className="help-section-title">
+              <span className="help-check-icon">✓</span>
+              Examples of Good Titles
+            </div>
+            <div className="help-examples-grid">
+              {goodTitleExamples.map((example, index) => (
+                <div key={index} className="help-example-item">
+                  <span className="help-example-icon">✓</span>
+                  {example}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="help-tips">
+            <div className="help-tip">
+              <span className="help-tip-icon">⚡</span>
+              <div>
+                <strong>Keep it Brief:</strong> 2-3 words is enough
+              </div>
+            </div>
+            <div className="help-tip">
+              <span className="help-tip-icon">ℹ️</span>
+              <div>
+                <strong>Be Specific:</strong> Name the exact item or problem
+              </div>
+            </div>
+            <div className="help-tip">
+              <span className="help-tip-icon">💬</span>
+              <div>
+                <strong>Avoid Details:</strong> Save details for the description field
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="help-modal-footer">
+          <button className="help-modal-got-it" onClick={onClose}>
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Priority Help Modal Component
+const PriorityHelpModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="help-modal-overlay" onClick={onClose}>
+      <div className="help-modal-content priority-help-content" onClick={(e) => e.stopPropagation()}>
+        <button className="help-modal-close" onClick={onClose}>×</button>
+        
+        <div className="priority-help-cards">
+          {/* High Priority Card */}
+          <div className="priority-card priority-high">
+            <div className="priority-card-header">
+              <h3>High Priority</h3>
+            </div>
+            <p className="priority-subtitle">Urgent - Needs attention ASAP</p>
+            <p className="priority-description">
+              Choose High if the issue affects safety, electricity, water, or makes the room unusable.
+            </p>
+            <div className="priority-examples">
+              <div className="priority-examples-title">
+                <span className="check-icon">✓</span> Examples:
+              </div>
+              <ul>
+                <li>Exposed electrical wires</li>
+                <li>Major water leak or flooding</li>
+              </ul>
+            </div>
+            <div className="priority-when">
+              <span className="when-icon">⚡</span>
+              <div>
+                <strong>When to use:</strong> Use High when the issue can cause harm or stop classes from continuing.
+              </div>
+            </div>
+          </div>
+
+          {/* Medium Priority Card */}
+          <div className="priority-card priority-medium">
+            <div className="priority-card-header">
+              <h3>Medium Priority</h3>
+            </div>
+            <p className="priority-subtitle">Important but not dangerous</p>
+            <p className="priority-description">
+              Choose Medium if the issue affects comfort or function, but the area is still usable.
+            </p>
+            <div className="priority-examples">
+              <div className="priority-examples-title">
+                <span className="check-icon">✓</span> Examples:
+              </div>
+              <ul>
+                <li>Aircon not cooling well</li>
+                <li>Projector not working</li>
+              </ul>
+            </div>
+            <div className="priority-when">
+              <span className="when-icon">⚡</span>
+              <div>
+                <strong>When to use:</strong> Use Medium when it should be fixed soon, but it's not an emergency.
+              </div>
+            </div>
+          </div>
+
+          {/* Low Priority Card */}
+          <div className="priority-card priority-low">
+            <div className="priority-card-header">
+              <h3>Low Priority</h3>
+            </div>
+            <p className="priority-subtitle">Minor inconvenience</p>
+            <p className="priority-description">
+              Choose Low if the issue does not affect safety or class operations.
+            </p>
+            <div className="priority-examples">
+              <div className="priority-examples-title">
+                <span className="check-icon">✓</span> Examples:
+              </div>
+              <ul>
+                <li>Small cosmetic damage (scratches, faded paint)</li>
+                <li>Light cover missing but bulb works</li>
+              </ul>
+            </div>
+            <div className="priority-when">
+              <span className="when-icon">⚡</span>
+              <div>
+                <strong>When to use:</strong> Use Low for non-urgent issues that can be scheduled later.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="help-modal-footer">
+          <button className="help-modal-got-it" onClick={onClose}>
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Building Map Modal Component (reusing CampusMapModal pattern)
+const BuildingMapModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="map-modal-overlay" onClick={onClose}>
+      <div className="map-modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="map-modal-close" onClick={onClose}>
+          ×
+        </button>
+        <img 
+          src="/citbuildings.jpg" 
+          alt="CIT Campus Map - Building Locator" 
+          className="map-modal-image"
+        />
+      </div>
+    </div>
+  );
+};
 
 export default function ReportIssue() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ← ADD THIS
   const { InactivityModal } = useInactivityLogout("STUDENT");
 
   // Detect Edit mode
@@ -34,6 +228,9 @@ export default function ReportIssue() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState({ type: "", message: "" });
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showPriorityHelp, setShowPriorityHelp] = useState(false);
+  const [showBuildingMap, setShowBuildingMap] = useState(false);
 
   // Load buildings
   useEffect(() => {
@@ -161,10 +358,18 @@ export default function ReportIssue() {
 
             {/* Form */}
             <form className="report-form-container" onSubmit={handleSubmit}>
-              {/* Title */}
+              {/* Title with Help Link */}
               <div className="form-group">
                 <label className="form-label">
                   Issue Title <span className="required">*</span>
+                  <button
+                    type="button"
+                    className="help-icon-btn"
+                    onClick={() => setShowHelpModal(true)}
+                    title="Need help writing the issue title?"
+                  >
+                    <Info size={16} />
+                  </button>
                 </label>
                 <input
                   className="form-input"
@@ -179,6 +384,14 @@ export default function ReportIssue() {
               <div className="form-group">
                 <label className="form-label">
                   Priority <span className="required">*</span>
+                  <button
+                    type="button"
+                    className="help-icon-btn"
+                    onClick={() => setShowPriorityHelp(true)}
+                    title="Learn about priority levels"
+                  >
+                    <Info size={16} />
+                  </button>
                 </label>
                 <select
                   className="form-input form-select"
@@ -211,6 +424,14 @@ export default function ReportIssue() {
                 <div className="form-group">
                   <label className="form-label">
                     Building <span className="required">*</span>
+                    <button
+                      type="button"
+                      className="help-icon-btn"
+                      onClick={() => setShowBuildingMap(true)}
+                      title="View campus map to locate your building"
+                    >
+                      <Info size={16} />
+                    </button>
                   </label>
                   <select
                     className="form-input form-select"
@@ -306,7 +527,16 @@ export default function ReportIssue() {
       {/* Toast */}
       {toast.message && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
 
-      {/* Inactivity Modal - ADD THIS */}
+      {/* Help Modal */}
+      <IssueTitleHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+
+      {/* Priority Help Modal */}
+      <PriorityHelpModal isOpen={showPriorityHelp} onClose={() => setShowPriorityHelp(false)} />
+
+      {/* Building Map Modal */}
+      <BuildingMapModal isOpen={showBuildingMap} onClose={() => setShowBuildingMap(false)} />
+
+      {/* Inactivity Modal */}
       {InactivityModal}
     </div>
   );

@@ -1,333 +1,200 @@
+/* ========================
+   ADMIN LAYOUT
+   ======================== */
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: #f9fafb;
 }
 
+/* ========================
+   SIDEBAR
+   ======================== */
 .admin-sidebar {
-  width: 200px !important;
-  background-color: white;
-  border-right: 1px solid #e0e0e0;
-  position: fixed !important;
-  height: 100vh !important;
-  top: 0 !important;
-  left: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
+  width: 260px;
+  background-color: #1f2937;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 1000;
 }
 
+/* ========================
+   SIDEBAR HEADER
+   ======================== */
 .sidebar-header {
-  padding: 20px 20px 20px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  order: 1 !important;
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 5px;
-}
-
-.logo-icon {
-  width: 28px;
-  height: 28px;
-  background-color: #2563eb;
-  color: white;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 16px;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .logo-text {
-  font-size: 20px;
-  font-weight: bold;
-  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
 .sidebar-subtitle {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 0.875rem;
+  color: #9ca3af;
   margin: 0;
-  padding-left: 36px;
+  margin-left: 2.75rem;
 }
 
+/* ========================
+   SIDEBAR NAV
+   ======================== */
 .sidebar-nav {
-  padding-top: 20px;
-  order: 2 !important;
-  flex: 1 !important;
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
-  color: #6b7280;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  color: #d1d5db;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  font-size: 0.9375rem;
+  font-weight: 500;
   border-left: 3px solid transparent;
-  font-size: 14px;
 }
 
 .nav-item:hover {
-  background-color: #f9fafb;
-  color: #1f2937;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
 }
 
 .nav-item.active {
-  background-color: #eff6ff;
-  color: #2563eb;
-  border-left-color: #2563eb;
-  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  border-left-color: #3b82f6;
 }
 
 .nav-icon {
-  font-size: 18px;
+  font-size: 1.25rem;
+  width: 24px;
+  text-align: center;
 }
 
-/* EDIT THIS VALUE TO ADJUST LOGOUT BUTTON VERTICAL POSITION */
-/* Increase padding-bottom to move button higher, decrease to move it lower */
+/* ========================
+   SIDEBAR FOOTER (LOGOUT)
+   ======================== */
 .sidebar-footer {
-  padding: 5px !important;
-  padding-bottom: 90px !important; /* Adjust this value to move button up/down */
-  border-top: 1px solid #e0e0e0;
-  order: 3 !important;
-  margin-top: auto !important;
-  position: relative !important;
-  bottom: 0 !important;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto; /* ✅ THIS PUSHES IT TO THE BOTTOM */
 }
 
 .logout-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.875rem;
   width: 100%;
-  padding: 12px;
-  background: none;
-  border: none;
-  color: #ef4444;
+  padding: 0.875rem 1rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .logout-btn:hover {
-  background-color: #fef2f2;
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
 }
 
+.logout-btn .nav-icon {
+  font-size: 1.25rem;
+}
+
+/* ========================
+   MAIN CONTENT
+   ======================== */
 .admin-content {
-  margin-left: 200px;
   flex: 1;
-  padding: 30px 40px;
+  margin-left: 260px;
+  padding: 2rem;
   min-height: 100vh;
 }
 
-/* Modal Styles - Optimized for Performance */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(2px);
-  animation: fadeIn 0.15s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.modal-content {
-  background: #fff;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 450px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.2s ease;
-  will-change: transform, opacity;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-content h2 {
-  margin: 0 0 1.5rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.building-modal .building-form label {
-  display: block;
-  margin-bottom: 1rem;
-  font-weight: 500;
-  color: #374151;
-  font-size: 0.875rem;
-}
-
-.building-modal .building-form input[type="text"],
-.building-modal .building-form input[type="file"] {
-  width: 100%;
-  margin-top: 0.375rem;
-  padding: 0.625rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.building-modal .building-form input[type="text"]:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.building-modal .building-form input[type="text"]::placeholder {
-  color: #9ca3af;
-}
-
-.form-error {
-  color: #dc2626;
-  background: #fee2e2;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-.modal-actions button {
-  padding: 0.625rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.modal-actions button[type="button"]:not(.danger-btn) {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
-}
-
-.modal-actions button[type="button"]:not(.danger-btn):hover:not(:disabled) {
-  background: #f9fafb;
-}
-
-.modal-actions button[type="submit"],
-.modal-actions button.primary {
-  background: #2563eb;
-  border: none;
-  color: white;
-}
-
-.modal-actions button[type="submit"]:hover:not(:disabled),
-.modal-actions button.primary:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.modal-actions .danger-btn {
-  background: #dc2626;
-  color: white;
-}
-
-.modal-actions .danger-btn:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-.modal-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.delete-modal p {
-  margin: 0 0 1.5rem 0;
-  color: #6b7280;
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.delete-modal strong {
-  color: #111827;
-  font-weight: 600;
-}
-
-/* Mobile Responsive Styles */
+/* ========================
+   RESPONSIVE
+   ======================== */
 @media (max-width: 768px) {
+  .admin-sidebar {
+    width: 70px;
+  }
+
+  .sidebar-header {
+    padding: 1rem 0.75rem;
+  }
+
+  .logo-text,
+  .sidebar-subtitle {
+    display: none;
+  }
+
+  .nav-item span:not(.nav-icon) {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 0.875rem 0.5rem;
+  }
+
+  .logout-btn span:not(.nav-icon) {
+    display: none;
+  }
+
+  .logout-btn {
+    justify-content: center;
+    padding: 0.875rem 0.5rem;
+  }
+
+  .admin-content {
+    margin-left: 70px;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+
   .admin-content {
     margin-left: 0;
     padding: 1rem;
   }
 
-  .admin-sidebar {
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+  .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
   }
 
-  .modal-content {
-    max-width: 90vw;
-    padding: 1.5rem;
-    margin: 1rem;
-  }
-
-  .modal-content h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-  }
-
-  .modal-actions {
-    flex-direction: column-reverse;
-    gap: 0.5rem;
-  }
-
-  .modal-actions button {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal-content {
-    padding: 1.25rem;
-    max-width: 95vw;
-  }
-
-  .building-modal .building-form input[type="text"],
-  .building-modal .building-form input[type="file"] {
-    font-size: 16px; /* Prevents zoom on iOS */
+  .sidebar-footer {
+    padding: 0.75rem;
   }
 }
