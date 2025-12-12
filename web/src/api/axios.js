@@ -14,27 +14,33 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("authToken");
 
-    // Logging request details
+    // Endpoints that do NOT require token
+    const publicEndpoints = ["/auth/login", "/auth/register", "/auth/google"];
+
+    const isPublic = publicEndpoints.some((endpoint) =>
+      config.url.includes(endpoint)
+    );
+
+    // Logging request info
     console.log("📤 API Request:", {
       url: config.baseURL + config.url,
       method: config.method,
       hasToken: !!token,
-      headers: config.headers,
     });
 
+    // If token exists → attach it
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.warn("⚠️ No token found in localStorage!");
+    } else if (!isPublic) {
+      // Only warn IF endpoint is protected
+      console.warn("⚠️ Token missing — protected request without authentication");
     }
 
     return config;
   },
-  (error) => {
-    console.error("❌ Request interceptor error:", error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
+
 
 // ====================================================
 // RESPONSE INTERCEPTOR
