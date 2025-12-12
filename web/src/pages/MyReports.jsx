@@ -5,6 +5,7 @@ import { User, Calendar, Edit2, Trash2, Search } from "lucide-react";
 
 import Header from "../components/Header";
 import UserActiveIssueModal from "../components/UserActiveIssueModal";
+import DeleteConfirmationModal from "../components/staff/DeleteConfirmationModal"; // ✅ Add this
 import { getAllIssues, deleteIssue } from "../api/issues";
 
 import "../css/MyReports.css";
@@ -28,6 +29,10 @@ export default function MyReports() {
   const [modalIssue, setModalIssue] = useState(null);
   const [toast, setToast] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // ✅ Add these states for delete modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [issueToDelete, setIssueToDelete] = useState(null);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -158,17 +163,25 @@ export default function MyReports() {
     sortBy,
   ]);
 
-  const handleDelete = async (issueId, e) => {
+  // ✅ Updated delete handler - opens modal instead of window.confirm
+  const handleDeleteClick = (issue, e) => {
     e.stopPropagation();
+    setIssueToDelete(issue);
+    setShowDeleteModal(true);
+  };
 
-    if (!window.confirm("Are you sure you want to delete this report?")) return;
+  // ✅ Updated delete confirm - works with modal
+  const handleDeleteConfirm = async () => {
+    if (!issueToDelete?.id) return;
 
     setIsDeleting(true);
 
     try {
-      await deleteIssue(issueId);
-      setAllIssues((prev) => prev.filter((i) => i.id !== issueId));
+      await deleteIssue(issueToDelete.id);
+      setAllIssues((prev) => prev.filter((i) => i.id !== issueToDelete.id));
       showToast("success", "Report deleted successfully!");
+      setShowDeleteModal(false);
+      setIssueToDelete(null);
     } catch (error) {
       console.error("Delete failed:", error);
       const errorMsg =
@@ -404,9 +417,10 @@ export default function MyReports() {
                               <Edit2 size={16} />
                             </button>
 
+                            {/* ✅ Updated to use handleDeleteClick */}
                             <button
                               className="admin-inline-btn delete"
-                              onClick={(e) => handleDelete(issue.id, e)}
+                              onClick={(e) => handleDeleteClick(issue, e)}
                               disabled={isDeleting}
                               title="Delete Issue"
                             >
@@ -440,6 +454,18 @@ export default function MyReports() {
               }}
             />
           )}
+
+          {/* ✅ Add Delete Confirmation Modal */}
+          <DeleteConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setIssueToDelete(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+            issueTitle={issueToDelete?.issueTitle}
+            isDeleting={isDeleting}
+          />
         </div>
       </main>
 

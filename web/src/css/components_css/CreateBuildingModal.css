@@ -1,0 +1,248 @@
+/* ========================
+   BUILDING MODAL STYLES
+   ======================== */
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Content */
+.modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Building Modal Specific */
+.building-modal h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Building Form */
+.building-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.building-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.building-form input[type="text"],
+.building-form input[type="file"] {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  background: #ffffff;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.building-form input[type="text"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.building-form input[type="text"]::placeholder {
+  color: #9ca3af;
+}
+
+.building-form input[type="file"] {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.building-form input[type="file"]::-webkit-file-upload-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-right: 0.75rem;
+}
+
+.building-form input[type="file"]::-webkit-file-upload-button:hover {
+  background: #e5e7eb;
+}
+
+/* Form Error */
+.form-error {
+  color: #ef4444;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+  background: #fef2f2;
+  border-radius: 6px;
+  border-left: 3px solid #ef4444;
+  margin: 0;
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.modal-actions button {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Cancel Button */
+.modal-actions button[type="button"] {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-actions button[type="button"]:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+/* Submit Button */
+.modal-actions button[type="submit"] {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.modal-actions button[type="submit"]:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+/* Danger Button (Delete) */
+.modal-actions button.danger-btn {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.modal-actions button.danger-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+/* Disabled State */
+.modal-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Delete Modal Specific */
+.delete-modal {
+  max-width: 400px;
+}
+
+.delete-modal h2 {
+  color: #1f2937;
+}
+
+.delete-modal p {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0 0 1.5rem 0;
+}
+
+.delete-modal strong {
+  color: #1f2937;
+}
+
+/* ========================
+   RESPONSIVE
+   ======================== */
+@media (max-width: 640px) {
+  .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+    max-height: 95vh;
+  }
+
+  .building-modal h2 {
+    font-size: 1.25rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+}
+
+/* ========================
+   SCROLLBAR STYLING
+   ======================== */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}

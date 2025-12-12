@@ -280,8 +280,10 @@ export default function BuildingDetail() {
               ←
             </button>
             <div>
-              <h1 className="building-title">{building?.buildingName}</h1>
-              <p className="building-subtitle">{building?.buildingCode}</p>
+              {/* ✅ Code first, larger */}
+              <h1 className="building-title">{building?.buildingCode}</h1>
+              {/* ✅ Name second, smaller */}
+              <p className="building-subtitle">{building?.buildingName}</p>
             </div>
           </div>
 

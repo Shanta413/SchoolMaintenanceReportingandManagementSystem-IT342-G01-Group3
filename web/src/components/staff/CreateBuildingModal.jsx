@@ -1,6 +1,9 @@
 import React, { useState, useCallback } from "react";
 import { createBuilding } from "../../api/building";
-import "../../css/AdminDashboard.css";
+import "../../css/components_css/CreateBuildingModal.css"; // ✅ Updated import
+
+
+
 
 const CreateBuildingModal = React.memo(({ isOpen, onClose, onBuildingCreated, showToast }) => {
   const [buildingCode, setBuildingCode] = useState("");
